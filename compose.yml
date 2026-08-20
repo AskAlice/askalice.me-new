@@ -1,0 +1,7 @@
+services:
+  web:
+    build: .
+    container_name: askalice-me
+    restart: unless-stopped
+    ports:
+      - "8087:80"
