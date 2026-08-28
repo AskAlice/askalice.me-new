@@ -25,7 +25,7 @@ export function About() {
           <p className="text-18px leading-[1.7] text-body m-0">
             These days I love <span className="text-pink">react-three-fiber, three.js, lottie, websockets, WebRTC</span>{' '}
             and openpilot — and I keep a free-time hand in{' '}
-            <a href={LINKS.riseintime} target="_blank" rel="noreferrer" className="text-pink border-b border-flamingo/40">
+            <a href={LINKS.riseintime} target="_blank" rel="noopener noreferrer" className="text-pink border-b border-flamingo/40">
               riseintime.com
             </a>
             .
@@ -37,6 +37,8 @@ export function About() {
             <img
               src={`${GRAVATAR}?s=480&d=identicon`}
               alt="Alice Knag"
+              width={480}
+              height={480}
               className="relative w-full aspect-square object-cover rounded-full border-2 border-white/12 block"
             />
           </div>

@@ -16,15 +16,15 @@ export function Footer() {
           </a>
         </div>
         <div className="flex flex-col gap-11px text-14px">
-          <a href={LINKS.github} target="_blank" rel="noreferrer" className="flex items-center gap-9px text-muted transition-colors duration-150 hover:text-pink">
+          <a href={LINKS.github} target="_blank" rel="me noopener noreferrer" className="flex items-center gap-9px text-muted transition-colors duration-150 hover:text-pink">
             <GithubIcon size={16} />
             github.com/AskAlice
           </a>
-          <a href={LINKS.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-9px text-muted transition-colors duration-150 hover:text-sky">
+          <a href={LINKS.linkedin} target="_blank" rel="me noopener noreferrer" className="flex items-center gap-9px text-muted transition-colors duration-150 hover:text-sky">
             <LinkedinIcon />
             in/aliceknag
           </a>
-          <a href={LINKS.riseintime} target="_blank" rel="noreferrer" className="flex items-center gap-9px text-muted transition-colors duration-150 hover:text-pink">
+          <a href={LINKS.riseintime} target="_blank" rel="noopener noreferrer" className="flex items-center gap-9px text-muted transition-colors duration-150 hover:text-pink">
             <GlobeIcon />
             riseintime.com
           </a>

@@ -50,6 +50,9 @@ export const CodeIcon = ({ size = 24, ...p }: P) => (
 export const PencilIcon = ({ size = 24, ...p }: P) => (
   <svg {...base(size, p)}><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
 )
+export const CpuIcon = ({ size = 24, ...p }: P) => (
+  <svg {...base(size, p)}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3" /></svg>
+)
 export const CodeSlashIcon = ({ size = 15, ...p }: P) => (
   <svg {...base(size, p)}><path d="m18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16" /></svg>
 )

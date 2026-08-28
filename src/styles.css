@@ -21,3 +21,28 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+pre .hljs-keyword,
+pre .hljs-selector-tag,
+pre .hljs-built_in { color: #ff8aa0; }
+pre .hljs-string,
+pre .hljs-attr,
+pre .hljs-attribute { color: #7fe0b0; }
+pre .hljs-comment,
+pre .hljs-doctag { color: #8b8698; }
+pre .hljs-number,
+pre .hljs-literal { color: #ffd47e; }
+pre .hljs-title,
+pre .hljs-title.function_,
+pre .hljs-title.class_ { color: #8fc9f5; }
+pre .hljs-variable,
+pre .hljs-params,
+pre .hljs-property,
+pre .hljs-template-variable { color: #b3a4f7; }
+pre .hljs-type,
+pre .hljs-class .hljs-title { color: #b3a4f7; }
+pre .hljs-meta,
+pre .hljs-name,
+pre .hljs-tag { color: #ff8aa0; }
+pre .hljs-regexp,
+pre .hljs-symbol { color: #8fc9f5; }

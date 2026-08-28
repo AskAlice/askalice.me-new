@@ -13,7 +13,7 @@ export default defineConfig({
       body2: '#c5c0d2',        // post body text
       muted: '#9b95aa',        // muted text
       faint: '#8b8698',        // faint labels
-      ghost: '#6b6678',        // mono footer text
+      ghost: '#8b8698',        // footer / de-emphasized (AA on ink)
       flamingo: '#f5708a',     // primary accent
       pink: '#ff8aa0',         // accent text / hover
       rose: '#ffd0da',         // hero badge text
@@ -34,7 +34,7 @@ export default defineConfig({
     // bordered mono tech chip
     'tech-chip': 'font-mono text-11.5px text-body border border-white/12 rounded-6px px-9px py-4px',
     // nav text link
-    'nav-link': 'text-14px font-medium text-muted px-13px py-8px rounded-9px cursor-pointer transition-all duration-150 hover:text-bright hover:bg-flamingo/12',
+    'nav-link': 'text-14px font-medium text-muted px-13px py-8px rounded-9px transition-all duration-150 hover:text-bright hover:bg-flamingo/12 focus-visible:text-bright focus-visible:bg-flamingo/12 focus-visible:outline-none',
     'section-pad': 'max-w-1080px mx-auto px-[clamp(18px,5vw,56px)]',
   },
 })

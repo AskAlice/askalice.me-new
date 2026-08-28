@@ -24,7 +24,7 @@ const GROUPS = [
     icon: <ShapesIcon />,
     label: 'Design + more',
     color: 'text-butter',
-    lines: ['Figma · Photoshop', 'Illustrator · After Effects', 'Web security · PCI'],
+    lines: ['Figma · Photoshop', 'Illustrator · After Effects', 'KiCad · ESP32 · ESPHome'],
   },
 ]
 
@@ -86,7 +86,7 @@ export function ResumeSection() {
             <div className="text-bright text-15px leading-[1.55]">
               2nd place — 2018 CU Blockchain Hackathon (0.5 ETH)
               <br />
-              <span className="text-muted text-14px">NY State award · 4-yr captain, FIRST Robotics #6567</span>
+              <span className="text-muted text-14px">NY State award · 4-yr captain, First Tech Challenge #6567</span>
             </div>
           </div>
         </div>

@@ -65,5 +65,5 @@ export function GeoCanvas() {
     loop()
     return () => cancelAnimationFrame(raf)
   }, [])
-  return <canvas ref={ref} className="absolute inset-0 w-full h-full block" />
+  return <canvas ref={ref} className="absolute inset-0 w-full h-full block" role="img" aria-label="Two nested wireframe cubes spinning with afterimage trails" />
 }

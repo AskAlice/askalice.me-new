@@ -1,10 +1,29 @@
-import { useSite } from '../store'
-import { GITHUB_CARDS } from '../lib/content'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { DEMOS, GITHUB_CARDS, PCB_MEDIA, SEARCH_MEDIA } from '../lib/content'
+import { CyclePreview } from './demos/CyclePreview'
 import { FlexChips } from './demos/FlexChips'
 import { GeoCanvas } from './demos/GeoCanvas'
+import { AppLink } from './AppLink'
+
+function WhenVisible({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => {
+      if (e?.isIntersecting) {
+        setOn(true)
+        io.disconnect()
+      }
+    }, { rootMargin: '80px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return <div ref={ref} className="absolute inset-0">{on ? children : null}</div>
+}
 
 export function Demos() {
-  const go = useSite((s) => s.go)
   return (
     <section id="demos" className="max-w-1180px mx-auto px-[clamp(18px,5vw,56px)] py-[clamp(60px,9vw,120px)] scroll-mt-80px">
       <div className="eyebrow mb-24px">
@@ -14,7 +33,7 @@ export function Demos() {
         Things running right here in the page.
       </h2>
       <p className="text-muted text-17px max-w-620px mt-0 mb-44px leading-[1.55]">
-        No screenshots — every tile below is real, interactive code. Click one to open the full demo.
+        Live tiles, a Chrome omnibox project, a MIDI viz, and an IoT PCB swarm. Click one to open the full page.
       </p>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-18px mb-64px">
@@ -31,41 +50,100 @@ export function Demos() {
             <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
               Tap a chip — watch the flexbox children collapse and reflow smoothly. My npm library, live.
             </p>
-            <span onClick={() => go('demo', { demo: 'flex' })} className="font-mono text-12.5px text-pink cursor-pointer">
+            <AppLink href="/demos/flex" className="font-mono text-12.5px text-pink">
               open demo →
-            </span>
+            </AppLink>
           </div>
         </div>
 
-        {/* Shader Field */}
+        {/* search.emu.sh */}
         <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
-          <div
-            onClick={() => go('demo', { demo: 'shader' })}
-            className="h-200px cursor-pointer relative overflow-hidden bg-[radial-gradient(60%_80%_at_30%_30%,rgba(245,112,138,0.55),transparent_60%),radial-gradient(50%_60%_at_75%_70%,rgba(143,201,245,0.45),transparent_60%),#14111b]"
-          >
-            <div className="absolute inset-0 h-40% animate-[scan_3.5s_linear_infinite] bg-[linear-gradient(transparent,rgba(245,112,138,0.12)_50%,transparent)]" />
-            <span className="absolute bottom-14px left-16px font-mono text-11px text-white/75">▶ click to run shader</span>
-          </div>
+          <AppLink href="/demos/search" className="h-200px relative overflow-hidden bg-[#14111b] block">
+            <WhenVisible>
+              <CyclePreview
+                srcs={SEARCH_MEDIA}
+                alt="search.emu.sh omnibox demos"
+                className="w-full h-full object-cover object-top"
+              />
+            </WhenVisible>
+          </AppLink>
           <div className="p-20px">
             <div className="flex items-center justify-between gap-10px">
-              <h3 className="text-18px font-600 m-0">Shader Field</h3>
-              <span className="font-mono text-11px text-sky border border-sky/30 rounded-5px px-7px py-3px">GLSL</span>
+              <h3 className="text-18px font-600 m-0">search.emu.sh</h3>
+              <span className="font-mono text-11px text-sky border border-sky/30 rounded-5px px-7px py-3px">TS</span>
             </div>
             <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
-              A mouse-reactive WebGL fragment shader. Raw GL, no three.js — just math and a full-screen triangle.
+              Chrome omnibox suggestions with DDG bangs, DNS digs, IP geolocation, and an LLM that picks Google vs DuckDuckGo.
             </p>
-            <span onClick={() => go('demo', { demo: 'shader' })} className="font-mono text-12.5px text-pink cursor-pointer">
-              open demo →
+            <AppLink href="/demos/search" className="font-mono text-12.5px text-pink">
+              open project →
+            </AppLink>
+          </div>
+        </div>
+
+        {/* react-three-midi / viz.emu.sh */}
+        <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
+          <AppLink href="/demos/midi" className="h-200px relative overflow-hidden bg-[#14111b] block">
+            <img
+              src={DEMOS.midi.preview}
+              alt="react-three-midi visualization"
+              width={640}
+              height={360}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover object-center"
+            />
+            <span className="absolute bottom-14px left-16px font-mono text-11px text-white/80">
+              click to play sound
             </span>
+          </AppLink>
+          <div className="p-20px">
+            <div className="flex items-center justify-between gap-10px">
+              <h3 className="text-18px font-600 m-0">react-three-midi</h3>
+              <span className="font-mono text-11px text-lilac border border-lilac/30 rounded-5px px-7px py-3px">R3F</span>
+            </div>
+            <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
+              MIDI analysis in a Three.js scene. Live at viz.emu.sh — click the demo to start audio.
+            </p>
+            <AppLink href="/demos/midi" className="font-mono text-12.5px text-pink">
+              open demo →
+            </AppLink>
+          </div>
+        </div>
+
+        {/* home-automation-pcbs */}
+        <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
+          <AppLink href="/demos/pcbs" className="h-200px relative overflow-hidden bg-[#14111b] block">
+            <WhenVisible>
+              <CyclePreview
+                srcs={PCB_MEDIA}
+                alt="ESP32 home-automation PCB turntables"
+                className="w-full h-full object-cover object-center"
+              />
+            </WhenVisible>
+          </AppLink>
+          <div className="p-20px">
+            <div className="flex items-center justify-between gap-10px">
+              <h3 className="text-18px font-600 m-0">home-automation-pcbs</h3>
+              <span className="font-mono text-11px text-mint border border-mint/30 rounded-5px px-7px py-3px">KiCad</span>
+            </div>
+            <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
+              Eleven ESP32 room nodes — turntables of the KiCad 3D renders. ESPHome, Matter/Thread, early-stage.
+            </p>
+            <AppLink href="/demos/pcbs" className="font-mono text-12.5px text-pink">
+              open project →
+            </AppLink>
           </div>
         </div>
 
         {/* Spin / Afterimage */}
         <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
-          <div onClick={() => go('demo', { demo: 'geo' })} className="h-200px cursor-pointer relative bg-[#14111b]">
-            <GeoCanvas />
-            <span className="absolute bottom-14px left-16px font-mono text-11px text-white/60">afterimage trails</span>
-          </div>
+          <AppLink href="/demos/geo" className="h-200px relative bg-[#14111b] block">
+            <WhenVisible>
+              <GeoCanvas />
+            </WhenVisible>
+            <span className="absolute bottom-14px left-16px font-mono text-11px text-white/80">afterimage trails</span>
+          </AppLink>
           <div className="p-20px">
             <div className="flex items-center justify-between gap-10px">
               <h3 className="text-18px font-600 m-0">Spin / Afterimage</h3>
@@ -74,9 +152,9 @@ export function Demos() {
             <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
               Basic geometry arranged in fancy ways, trails from one translucent rect, auto-rotation set to a ridiculous value.
             </p>
-            <span onClick={() => go('demo', { demo: 'geo' })} className="font-mono text-12.5px text-pink cursor-pointer">
+            <AppLink href="/demos/geo" className="font-mono text-12.5px text-pink">
               open demo →
-            </span>
+            </AppLink>
           </div>
         </div>
       </div>
@@ -88,7 +166,7 @@ export function Demos() {
             key={c.name}
             href={c.href}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="border border-white/9 rounded-13px p-20px bg-pit transition-all duration-150 hover:border-flamingo/40 hover:-translate-y-2px"
           >
             <div className="flex justify-between items-center mb-12px">

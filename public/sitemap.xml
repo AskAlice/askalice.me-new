@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://askalice.me/</loc><changefreq>weekly</changefreq><priority>1</priority></url>
+  <url><loc>https://askalice.me/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://askalice.me/blog/animating-flexbox-children</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://askalice.me/blog/oh-my-comma</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://askalice.me/blog/afterimage-trails</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://askalice.me/photography</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://askalice.me/demos/flex</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://askalice.me/demos/search</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://askalice.me/demos/midi</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://askalice.me/demos/geo</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://askalice.me/demos/pcbs</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+</urlset>

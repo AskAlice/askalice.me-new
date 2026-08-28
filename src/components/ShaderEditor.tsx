@@ -16,20 +16,22 @@ export function ShaderEditor() {
         >
           {warpErr ? `✕ ${warpErr}` : '● compiled'}
         </span>
-        <span
+        <button
+          type="button"
           onClick={resetShader}
-          className="ml-auto font-mono text-11px text-muted cursor-pointer px-9px py-3px border border-white/14 rounded-7px hover:text-white"
+          className="ml-auto font-mono text-11px text-muted px-9px py-3px border border-white/14 rounded-7px hover:text-white"
         >
           reset
-        </span>
-        <span onClick={toggleEditor} className="font-mono text-14px text-muted cursor-pointer px-6px py-2px hover:text-white">
+        </button>
+        <button type="button" onClick={toggleEditor} aria-label="Close shader editor" className="font-mono text-14px text-muted px-6px py-2px hover:text-white">
           ✕
-        </span>
+        </button>
       </div>
       <textarea
         value={warpSrc}
         onChange={(e) => setWarpSrc(e.target.value)}
         spellCheck={false}
+        aria-label="Fragment shader source"
         className="flex-auto min-h-320px resize-none border-none outline-none bg-transparent text-[#e9e4f2] font-mono text-11.5px leading-[1.6] p-14px whitespace-pre overflow-auto"
       />
       <div className="px-13px py-9px border-t border-white/10 font-mono text-10.5px text-ghost">
