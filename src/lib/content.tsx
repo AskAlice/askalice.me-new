@@ -29,6 +29,18 @@ export interface Role {
 
 export const ROLES: Omit<Role, 'badge'>[] = [
   {
+    title: 'Co-Founder · Managing Partner',
+    company: 'Colorado Asset Management, LLC',
+    companyColor: '#f5a66f',
+    badgeBg: 'rgba(245,166,111,0.16)',
+    dates: '2026 — now',
+    location: 'Colorado',
+    current: true,
+    description:
+      'Co-founded an automotive partnership acquiring and reconditioning vehicles for resale and Turo rentals. Manage sourcing, pricing, maintenance, listings, guest operations and unit economics for 3 vehicles under management, expanding to 6.',
+    tags: ['Vehicle sourcing', 'Fleet operations', 'Turo', 'Unit economics'],
+  },
+  {
     title: 'Hardware incubator · IoT',
     company: 'Independent',
     companyColor: '#6ee7b7',

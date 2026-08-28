@@ -40,7 +40,7 @@ export function ResumeSection() {
             <h2 className="text-[clamp(28px,4vw,44px)] leading-[1.05] font-600 tracking-[-0.02em] m-0">
               The whole story,
               <br />
-              one page.
+              three pages.
             </h2>
           </div>
           <a

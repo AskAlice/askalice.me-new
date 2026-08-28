@@ -3,6 +3,7 @@ import { ROLES } from '../lib/content'
 import { CalendarIcon, PinIcon, CpuIcon, PlayBadgeIcon, CodeIcon, PencilIcon } from './icons'
 
 const BADGES: ReactNode[] = [
+  <span key="cam" className="font-700 text-15px">CAM</span>,
   <CpuIcon key="cpu" />,
   <span key="p" className="font-700 text-22px">P</span>,
   <PlayBadgeIcon key="ps" />,
