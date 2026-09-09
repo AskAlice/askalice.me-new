@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { parsePath } from './lib/routes'
+import { EMU_LLC } from './lib/env'
 import { useSite } from './store'
 import { Nav } from './components/Nav'
 import { Seo } from './components/Seo'
@@ -10,6 +11,7 @@ import { Demos } from './components/Demos'
 import { Writing } from './components/Writing'
 import { ResumeSection } from './components/ResumeSection'
 import { Footer } from './components/Footer'
+import { Team } from './components/Team'
 import { BlogIndex } from './views/BlogIndex'
 import { Photography } from './views/Photography'
 import { BlogPost } from './views/BlogPost'
@@ -42,7 +44,7 @@ export default function App() {
           <div>
             <Hero />
             <About />
-            <Experience />
+            {EMU_LLC ? <Team /> : <Experience />}
             <Demos />
             <Writing />
             <ResumeSection />
