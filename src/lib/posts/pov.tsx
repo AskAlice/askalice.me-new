@@ -4,6 +4,7 @@ import specHtml from './pov-poi.html?raw'
 import mediaJson from './pov-poi.media.json?raw'
 import type { ReactNode } from 'react'
 import { P, A } from './ui'
+import { AppLink } from '../../components/AppLink'
 
 const BASE = '/demos/pov-poi/'
 
@@ -66,7 +67,9 @@ export function PovArticle() {
         ))}
       </div>
       <P>
-        Source, generators and simulator: <A href="https://github.com/AskAlice">github.com/AskAlice</A>.
+        Try the firmware yourself in the <AppLink href="/demos/pov" className="text-pink border-b border-flamingo/35">simulator</AppLink>{' '}
+        (or <A href="/demos/pov-poi/simulator.html">full screen</A>). Source:{' '}
+        <A href="https://github.com/AskAlice">github.com/AskAlice</A>.
       </P>
       <div className="md-body" dangerouslySetInnerHTML={{ __html: specHtml }} />
     </div>

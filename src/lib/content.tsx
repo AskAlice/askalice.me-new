@@ -226,6 +226,16 @@ export const DEMOS: Record<
     preview: 'https://emu.bz/midi.gif',
     note: 'Click the demo to play sound.',
   },
+  pov: {
+    title: 'POV poi simulator',
+    desc: 'The persistence-of-vision poi and bike-wheel firmware, running in the browser: the real C core compiled to WebAssembly, fed by a simulated IMU and microphone, drawn with an afterimage shader. Bench, Performer and Bike views, with live sensor readouts.',
+    tech: 'C11 → WASM · R3F · Three.js',
+    repo: LINKS.github,
+    live: '/demos/pov-poi/simulator.html',
+    embed: '/demos/pov-poi/simulator.html',
+    preview: '/demos/pov-poi/sim-disc.png',
+    note: 'Drag to orbit · pick a view in the panel',
+  },
   pcbs: {
     title: 'home-automation-pcbs',
     desc: 'Open KiCad swarm of ESP32 room nodes — ESPHome, Matter/Thread, Zigbee, BLE, Wi-Fi. Early-stage designs; renders live here because GitHub main never got the binaries.',

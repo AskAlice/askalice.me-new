@@ -37,12 +37,12 @@ export function DemoDetail() {
           ))}
         </div>
       )}
-      {activeDemo === 'midi' && demo.embed && (
+      {(activeDemo === 'midi' || activeDemo === 'pov') && demo.embed && (
         <div className="border border-white/12 rounded-16px overflow-hidden relative bg-[#0e0c14]">
           <iframe
             src={demo.embed}
             title={demo.title}
-            className="w-full h-[clamp(320px,55vh,560px)] border-0 block"
+            className={`w-full border-0 block ${activeDemo === 'pov' ? 'h-[clamp(460px,78vh,860px)]' : 'h-[clamp(320px,55vh,560px)]'}`}
             allow="autoplay"
             loading="lazy"
           />
@@ -77,7 +77,7 @@ export function DemoDetail() {
             rel="noopener noreferrer"
             className="font-mono text-12px text-sky border border-sky/30 rounded-7px px-11px py-6px"
           >
-            live site ↗
+            {activeDemo === 'pov' ? 'full screen ↗' : 'live site ↗'}
           </a>
         )}
         <a

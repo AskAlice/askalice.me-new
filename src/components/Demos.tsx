@@ -111,6 +111,34 @@ export function Demos() {
           </div>
         </div>
 
+        {/* POV poi simulator */}
+        <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
+          <AppLink href="/demos/pov" className="h-200px relative overflow-hidden bg-[#14111b] block">
+            <img
+              src={DEMOS.pov.preview}
+              alt="POV poi simulator: a disc image drawn by a spinning LED bar"
+              width={640}
+              height={360}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover object-center"
+            />
+            <span className="absolute bottom-14px left-16px font-mono text-11px text-white/80">firmware in WASM</span>
+          </AppLink>
+          <div className="p-20px">
+            <div className="flex items-center justify-between gap-10px">
+              <h3 className="text-18px font-600 m-0">POV poi simulator</h3>
+              <span className="font-mono text-11px text-butter border border-butter/30 rounded-5px px-7px py-3px">WASM</span>
+            </div>
+            <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
+              Persistence-of-vision poi and bike wheels. The real firmware core runs in your browser against a simulated IMU.
+            </p>
+            <AppLink href="/demos/pov" className="font-mono text-12.5px text-pink">
+              open simulator →
+            </AppLink>
+          </div>
+        </div>
+
         {/* home-automation-pcbs */}
         <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
           <AppLink href="/demos/pcbs" className="h-200px relative overflow-hidden bg-[#14111b] block">
