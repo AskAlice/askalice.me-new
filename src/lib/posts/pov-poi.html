@@ -1,0 +1,1129 @@
+<p><strong>Revision:</strong> C (2026-10-07): 3.0 mm pitch, poi strip back to a (double-sided) flex inside a clear tube with bonded bottle-neck ends, controller + LiPo on the wheel hub. Rev B was a rigid poi bar; rev A a folded flex.
+<strong>Status:</strong> The design is generated and passes DRC (see §9). It has not been fabricated.</p>
+<h2 id="1-purpose-and-scope">1. Purpose and scope</h2>
+<p>The hardware draws images in the air with two rows of HD107S LEDs. The firmware times each column from
+<strong>rotation angle</strong> rather than wall-clock time, so images don't squish or stretch as the spin speed changes.
+One controller design serves two products:</p>
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>LED board</th>
+<th>Rotation centre</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Poi (pair)</td>
+<td><code>led-bar-poi</code>: one arm, 165 LEDs per face, flex</td>
+<td>Your hand (tether)</td>
+</tr>
+<tr>
+<td>Bike wheel</td>
+<td><code>led-bar-wheel-&lt;size&gt;</code>: two arms, LEDs on both faces of each arm</td>
+<td>Axle, at the middle of the bar</td>
+</tr>
+</tbody>
+</table>
+<p><strong>In scope:</strong> schematics, PCBs, fab outputs, mechanical concept, BLE upload protocol, Android uploader.
+<strong>Out of scope:</strong> controller firmware. <code>docs/PROTOCOL.md</code> is the contract it must implement.</p>
+<h2 id="2-system-overview">2. System overview</h2>
+<pre><code> poi:   string-holder cap (on a bonded 38 mm neck) ─ controller ─ 18650 ─ LED flex (both faces) ─ tip cap
+                                        └─ GH-10 cable beside the cell ─┘
+ wheel: arm 1 LEDs ─ [hub: controller wing + LiPo wing, axle hole] ─ arm 2 LEDs
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Block</th>
+<th>Part</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCU</td>
+<td>ESP32-S3-MINI-1U-N4R2</td>
+<td>BLE 5, USB-OTG, quad PSRAM 2 MB. The U variant (no PCB antenna) works inside a tube. Add a U.FL whip antenna along the tube wall.</td>
+</tr>
+<tr>
+<td>IMU</td>
+<td>ST <strong>LSM6DSV16X</strong> (default), mounted <strong>rotated 45° in the board plane</strong>; ST LSM6DSV320X as the premium option</td>
+<td>Gyro ±4000 dps, accelerometer ±16 g. On the controller (about 0.3 m from the hand) a fast spin reaches about 11 g at 3 rev/s and 19 g at 4 rev/s. At 45° the radial force splits over the sensor's x and y axes (×0.707 each), so ±16 g lasts to 16/0.707 ≈ 22.6 g radial, about 4.3 rev/s at 0.3 m (≈ 4.1 rev/s once gravity's ±1 g adds on). Above that the firmware holds the display mode and runs on the gyro alone (§3.5). The LSM6DSV320X adds a ±320 g channel that keeps the accelerometer usable at any spin; firmware supports both (<code>has_high_g</code>, <code>imu_mount_deg</code>).</td>
+</tr>
+<tr>
+<td>Microphone</td>
+<td>TDK InvenSense ICS-43434, I2S, 24-bit</td>
+<td>Beat/onset detection for the music show mode. Bottom port; sound reaches it through an IP67 ePTFE acoustic vent in the string-holder cap.</td>
+</tr>
+<tr>
+<td>Radio</td>
+<td>ESP32-S3 BLE + ESP-NOW (same 2.4 GHz radio, time-shared)</td>
+<td>BLE for the phone app; ESP-NOW for the music conductor and poi-to-poi sync (<code>docs/ESPNOW.md</code>).</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>microSD, Molex 47219 <strong>hinged lid</strong>, 4-bit SDMMC</td>
+<td>Holds the image library (<code>/pov/*.povi</code>); the app lists, plays, deletes and uploads images on it over BLE (<code>docs/PROTOCOL.md</code> v1.1). A push-push socket can spit the card out under centrifugal load; the hinged lid cannot.</td>
+</tr>
+<tr>
+<td>Charger</td>
+<td>TI BQ24074</td>
+<td>0.9 A charge (R_ISET = 1 kΩ → 0.89 A). Input limit 1.42 A (R_ILIM = 1.13 kΩ). Power-path output VSYS.</td>
+</tr>
+<tr>
+<td>3.3 V</td>
+<td>AP2112K-3.3</td>
+<td>600 mA LDO, fed from VSYS.</td>
+</tr>
+<tr>
+<td>LED rail</td>
+<td>TI TPS61022 boost, VBAT → 5.0 V</td>
+<td>8 A valley current limit. True load disconnect when <code>LED_EN</code> is low, so the LEDs draw nothing when off. R8/R9 = 732 k/100 k gives 5.0 V.</td>
+</tr>
+<tr>
+<td>Level shift</td>
+<td>SN74LVC8T245, 3.3 V → 5 V</td>
+<td>Six channels used: CLK to each LED port (two) plus four data lines. 33 Ω series resistors at the source.</td>
+</tr>
+<tr>
+<td>LED port</td>
+<td>JST GH 1.25 mm, 10-pin</td>
+<td>Pinout in §4. Port 1 is fitted on every build. Port 2 is fitted on wheel builds only.</td>
+</tr>
+<tr>
+<td>Battery</td>
+<td>Poi: 1S Li-ion 21700 (Molicel P45B, recommended) or 18650 (Molicel P28A), high-drain; see §2.1. Wheel: 1S LiPo pouch at the hub</td>
+<td>JST PH 4-pin SMD connector, 2 pins for + and 2 for −. <strong>Use a tabbed, soldered, protected cell, not spring contacts.</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="21-power-budget-and-run-time-poi-one-head">2.1 Power budget and run time (poi, one head)</h3>
+<p>Inputs (all in <code>docs/calc/runtime.py</code>; change them and re-run):</p>
+<table>
+<thead>
+<tr>
+<th>Load</th>
+<th>Value</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HD107S static current</td>
+<td>1 mA per LED, so <strong>0.33 A at 5 V for 330 LEDs even when every pixel is dark</strong></td>
+<td>HD107S datasheet, IDD typ</td>
+</tr>
+<tr>
+<td>HD107S full white</td>
+<td>about 39 mA per LED (12–14 mA per channel), 330 × 39 mA ≈ 13 A. Not allowed.</td>
+<td>HD107S datasheet</td>
+</tr>
+<tr>
+<td>Firmware cap on the 5 V rail</td>
+<td>2.0 A including the static current (10 W)</td>
+<td>firmware contract, §7</td>
+</tr>
+<tr>
+<td>Boost efficiency</td>
+<td>90–93 % (TPS61022, 3.6 V in)</td>
+<td>TPS61022 datasheet curve</td>
+</tr>
+<tr>
+<td>ESP32-S3 + BLE + IMU + SD reads</td>
+<td>about 0.10 A from the cell (LDO)</td>
+<td>ESP32-S3 datasheet, typical</td>
+</tr>
+</tbody>
+</table>
+<p>"x % of full white" is the image's average pixel value after the brightness setting, as a share of all
+LEDs at full white. Most POV images are mostly dark, so 3–6 % is typical; 10 % is a bright, busy image.</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Rail current (A)</th>
+<th>From cell (W)</th>
+<th>18650 Molicel P28A</th>
+<th>21700 Molicel P45B</th>
+<th>21700 Samsung 50S</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rail on, all pixels dark</td>
+<td>0.33</td>
+<td>2.1</td>
+<td>4.4 h</td>
+<td>7.1 h</td>
+<td>7.8 h</td>
+</tr>
+<tr>
+<td>Dim: 3 % of full white on average</td>
+<td>0.72</td>
+<td>4.3</td>
+<td>2.2 h</td>
+<td>3.5 h</td>
+<td>3.9 h</td>
+</tr>
+<tr>
+<td>Typical: 6 %</td>
+<td>1.10</td>
+<td>6.4</td>
+<td>1.5 h</td>
+<td>2.4 h</td>
+<td>2.6 h</td>
+</tr>
+<tr>
+<td>Bright: 10 %</td>
+<td>1.62</td>
+<td>9.3</td>
+<td>1.0 h</td>
+<td>1.6 h</td>
+<td>1.8 h</td>
+</tr>
+<tr>
+<td>At the firmware cap</td>
+<td>2.00</td>
+<td>11.5</td>
+<td>0.8 h</td>
+<td>1.3 h</td>
+<td>1.4 h</td>
+</tr>
+</tbody>
+</table>
+<p>Battery current at the cap is about 3.2 A (3.8 A at 3.0 V), well inside every listed cell's rating.
+The static current matters: with the rail on and nothing lit the LEDs alone take 1.65 W, so the firmware
+must drop <code>LED_EN</code> whenever the poi stops spinning, not just send black.</p>
+<p><strong>18650 or 21700:</strong> one 18650 gives about 1.5 h of typical use. A 21700 (Molicel P45B, 4500 mAh) gives
+about 2.4 h, roughly 60 % more, for 23 g more cell and a bigger tube (§6.1): about 350 g per poi instead
+of 305 g. Recommendation: use the 21700 unless the extra weight bothers you in hand; the CAD model
+(<code>mech/</code>) builds either with one parameter.</p>
+<h2 id="3-led-boards-rev-c-30-mm-pitch-leds-on-both-faces">3. LED boards (rev C: 3.0 mm pitch, LEDs on both faces)</h2>
+<h3 id="31-construction">3.1 Construction</h3>
+<p>Every LED board carries HD107S-2020 LEDs on <strong>both</strong> faces, reflowed at the fab (double-sided SMT):</p>
+<pre><code>  HD107S-2020 (face A) / silk / F.Cu ─ In1 GND ─ In2 VLED ─ B.Cu / silk / HD107S-2020 (face B)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Board</th>
+<th>Substrate</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>led-bar-poi</code></td>
+<td>4-layer polyimide <strong>flex</strong>, 0.3 mm</td>
+<td>Flexible, as you asked; the acrylic tube is the structure, so the strip only has to hang in it (§6). FR4 0.2 mm stiffener under the connector only.</td>
+</tr>
+<tr>
+<td><code>led-bar-wheel-*</code></td>
+<td>1.6 mm 4-layer FR4</td>
+<td>The bar spans the wheel with nothing around it, so it must be its own spine.</td>
+</tr>
+<tr>
+<td><code>led-bar-poi-seg</code> (2 per poi) + <code>poi-root-adapter</code></td>
+<td>4-layer polyimide flex, 0.3 mm; adapter 0.8 mm 4-layer FR4</td>
+<td>Same poi strip cut into two identical 251 mm segments so JLCPCB can assemble it (see below). The rigid adapter carries the GH-10, anchors the strip in the sled and is its own stiffener.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Density.</strong> Pitch is <strong>3.0 mm (≈ 333 LEDs/m)</strong>, the tightest this layout passes DRC at. Each LED keeps its
+own 100 nF capacitor, two data-hop vias and two plane vias, and face B sits half a pitch along so the two
+faces' vias never collide. Below 3.0 mm the vias of the two faces start to touch; going denser would need
+via-in-pad or a 6-layer stack.</p>
+<p><strong>Segmented poi flex (JLCPCB build).</strong> <code>led-bar-poi</code> stays as the one-piece option (517.5 mm) for
+assemblers that take 520 mm flex. For JLCPCB (assembly up to 460 × 500 mm, regular flex up to 490 mm)
+the poi uses <code>poi-root-adapter</code> + 2 × <code>led-bar-poi-seg</code>:</p>
+<ul>
+<li><strong>Segment:</strong> 251.0 × 20 mm, same stack, LED/cap/via scheme as <code>led-bar-poi</code>, <strong>83 LEDs per face</strong>
+  (166 per face per poi, about 498 mm of LEDs). Face A LED k at x = 1.75 + 3k, face B at x = 3.25 + 3k
+  (x from the segment's root edge).</li>
+<li><strong>Lap joint:</strong> segment 2 lies on top of segment 1, both face A up. Its root edge sits at x = 249.0 of
+  segment 1 (= 83 × 3.0 mm), so the overlap is 2.0 mm (249.0 to 251.0) and both faces continue at
+  exactly 3.0 mm pitch. In the overlap only the touching faces are LED-free: segment 1's tip has joint
+  pads on F.Cu, segment 2's root has the same pads on B.Cu. The outward faces keep their LEDs: segment 2's
+  face-A LED 0 sits inside the overlap on top, segment 1's last face-B LED sits inside it underneath.</li>
+<li><strong>Why 2.0 mm, not 2.5–3 mm:</strong> the outward-face LEDs next to the overlap (segment 1's last face-A LED,
+  segment 2's face-B LED 0) are 2.0 mm bodies that must clear the mating segment's edge. With the 1.5 mm
+  face stagger the overlap can be at most 2.5 mm minus twice the edge gap; a 0.25 mm gap gives 2.0 mm.
+  A longer overlap would sit an LED body on the other segment's edge. <code>poi_seg.SegGeom.check()</code> enforces this.</li>
+<li><strong>Identical segments:</strong> the tip end is the root end turned 180° (x → L − x, y → −y, F.Cu ↔ B.Cu,
+  face A ↔ face B, inputs ↔ outputs). The generator designs the root copper once and mirrors it, and
+  checks that tip pads = root pads + 249.0 mm.</li>
+<li><strong>Root input:</strong> CLK_A, DAT_A, CLK_B, DAT_B, VLED, GND on segment 1's root pads. The faces need separate
+  clocks after LED 0 because each LED re-drives the clock on CO. <code>poi-root-adapter</code> (22 × 20 mm) ties the
+  single CLK from the GH-10 (pinout §4 unchanged) to both CLK_A and CLK_B, carries 2 × 22 µF + 100 nF, and
+  is the mechanical anchor: board edge plus two Ø 2.2 mm holes into the sled. Its tip has the same F.Cu
+  pads as a segment tip.</li>
+<li><strong>Last segment's tip pads:</strong> leave them unsoldered and cover them with Kapton tape or coverlay. The tip-cap
+  pins go through its two Ø 1.0 mm alignment holes.</li>
+</ul>
+<p>LED x positions around the joint, from segment 1's root edge (generator <code>SegGeom.joint_table()</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Face</th>
+<th>seg 1 LED 81</th>
+<th>seg 1 LED 82</th>
+<th>seg 2 LED 0</th>
+<th>seg 2 LED 1</th>
+<th>Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A (top)</td>
+<td>244.75</td>
+<td>247.75</td>
+<td>250.75</td>
+<td>253.75</td>
+<td>3.00 / 3.00 / 3.00</td>
+</tr>
+<tr>
+<td>B (bottom)</td>
+<td>246.25</td>
+<td>249.25</td>
+<td>252.25</td>
+<td>255.25</td>
+<td>3.00 / 3.00 / 3.00</td>
+</tr>
+</tbody>
+</table>
+<p>Side view of the joint, to scale along x (1 character = 0.25 mm, thickness exaggerated):</p>
+<pre><code>            A82         A0'         A1'                face A (top): 247.75 | 250.75, 253.75
+         ########    ########    ########
+                  ================================     segment 2 (root edge at 249.0)
+                   xxxxxx                              solder: seg 2 root pads (B.Cu) on seg 1 tip pads (F.Cu)
+==========================                             segment 1 (tip edge at 251.0)
+   ########    ########    ########    ########
+      B81         B82         B0'         B1'          face B (bottom): 246.25, 249.25 | 252.25, 255.25
+                  |&lt;-2.0-&gt;|                            overlap 249.0 to 251.0; LED bodies clear both edges by 0.25
+</code></pre>
+<p>Joint pads (library footprint <code>pov:PoiLapJoint_6P</code>). Every pad is 1.35 mm along the strip
+(249.33 to 250.68), with ENIG, a mask opening and no paste:</p>
+<table>
+<thead>
+<tr>
+<th>y (mm)</th>
+<th>−8.55</th>
+<th>−6.6</th>
+<th>−4.5</th>
+<th>−2.55</th>
+<th>−0.6</th>
+<th>+0.6</th>
+<th>+2.55</th>
+<th>+4.5</th>
+<th>+6.6</th>
+<th>+8.55</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pad</td>
+<td>VLED 2.2 wide</td>
+<td>Ø 1.0 NPTH</td>
+<td>GND 2.5 wide</td>
+<td>DAT_B 0.8</td>
+<td>CLK_A 0.8</td>
+<td>CLK_B 0.8</td>
+<td>DAT_A 0.8</td>
+<td>GND 2.5 wide</td>
+<td>Ø 1.0 NPTH</td>
+<td>VLED 2.2 wide</td>
+</tr>
+</tbody>
+</table>
+<p>Each power net gets two pads (4.4 mm of VLED and 5.0 mm of GND across the strip), each with two
+same-net plane vias, so 2 A is not a problem. Signal pads have no vias. Signal vias sit in the y = ±1.6 mm
+gaps and are tented on both faces, under the mating segment's solder mask.</p>
+<p><strong>Joint assembly</strong> (per poi, one joint plus the adapter joint, which is made the same way):</p>
+<ol>
+<li>JLCPCB delivers segments fully assembled; the joint pads are bare ENIG (no paste) on purpose.</li>
+<li>Jig: an aluminium plate with two Ø 1.0 mm pins 13.2 mm apart, plus a 3 mm wide × 1.5 mm deep relief
+   channel along the LED row (face-B LEDs underneath). Put segment 1 face A up over the pins through its
+   tip holes. Apply a thin layer of <strong>SnBi58</strong> low-temperature paste (or 0.1 mm preform) to its tip pads.
+   Put segment 2 face A up over the same pins through its root holes. The silk ticks show where each
+   edge should land.</li>
+<li>Reflow at about 170–180 °C: hot-bar with a relieved thermode (it must not press on segment 2's face-A
+   LED 0 in the overlap) for 5–8 s, or heat the jig plate on a hot plate. SnBi melts at 138 °C, so the
+   LEDs' SAC305 joints (217 °C) do not reflow a third time.</li>
+<li>Test before closing: DMM check that VLED–GND is not shorted and that each signal pad pair has continuity.
+   Then power from the adapter, drive 166 LEDs on each face (<code>DAT_A</code> and <code>DAT_B</code>), and confirm both chains
+   light past LED 82 → 83.</li>
+<li>Wick low-viscosity flexible underfill or edge-bond epoxy along both cut edges, keeping it off the LED
+   lenses. Then wrap the overlap with 25 µm polyimide tape or a coverlay strip, leaving the overlap LEDs
+   uncovered. Do the same for the adapter joint, and cover the last segment's unused tip pads.</li>
+</ol>
+<h3 id="32-electrical">3.2 Electrical</h3>
+<ul>
+<li><strong>Feed point:</strong> each LED string starts at the <strong>end</strong> of its board where the connector is (poi: the root
+  end by the hand; wheel: the hub end of each arm, right beside the controller) and runs outward.</li>
+<li><strong>Parallel data:</strong> one shared CLK, with DAT_A on face A and DAT_B on face B. The controller clocks both in
+  the same SPI transfer.</li>
+<li><strong>Data hops:</strong> the 2020 package runs clock and data in opposite directions. Each data link drops through a
+  via and hops one pitch on an inner layer, alternating layers because neighbouring hops overlap.</li>
+<li><strong>Stagger:</strong> face B is offset +pitch/2 (1.5 mm). Firmware samples face B's image at r + 1.5 mm.</li>
+<li><strong>Decoupling:</strong> 100 nF per LED and 10 µF every 12 LEDs; VLED and GND reach every LED through the planes.</li>
+<li><strong>Refresh:</strong> a 165-LED lane is 675 bytes. At 30 MHz that is 180 µs per column, well inside the 926 µs a
+  column lasts at 3 rev/s with 360 columns.</li>
+</ul>
+<h3 id="33-variants">3.3 Variants</h3>
+<p>Wheels: LED 0 sits 45 mm from the axle; the last LED stays at least 25 mm inside the bead seat.</p>
+<table>
+<thead>
+<tr>
+<th>Board</th>
+<th>Wheel (ISO bead seat, mm)</th>
+<th>LEDs per face (per arm)</th>
+<th>Outermost LED radius (mm)</th>
+<th>Board (mm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>led-bar-poi</code></td>
+<td>—</td>
+<td>165 (one arm)</td>
+<td>492 from LED 0</td>
+<td>517.5 × 20 flex</td>
+</tr>
+<tr>
+<td><code>led-bar-poi-seg</code> (× 2)</td>
+<td>—</td>
+<td>83 per segment, 166 per poi</td>
+<td>495 from LED 0</td>
+<td>251 × 20 flex each</td>
+</tr>
+<tr>
+<td><code>poi-root-adapter</code></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>22 × 20 rigid FR4 0.8 mm</td>
+</tr>
+<tr>
+<td><code>led-bar-wheel-700c</code></td>
+<td>700c / 29" (622)</td>
+<td>81</td>
+<td>285</td>
+<td>580 × 200</td>
+</tr>
+<tr>
+<td><code>led-bar-wheel-650b</code></td>
+<td>650b / 27.5" (584)</td>
+<td>75</td>
+<td>267</td>
+<td>544 × 200</td>
+</tr>
+<tr>
+<td><code>led-bar-wheel-26in</code></td>
+<td>26" (559)</td>
+<td>70</td>
+<td>252</td>
+<td>514 × 200</td>
+</tr>
+<tr>
+<td><code>led-bar-wheel-24in</code></td>
+<td>24" (507)</td>
+<td>62</td>
+<td>228</td>
+<td>466 × 200</td>
+</tr>
+<tr>
+<td><code>led-bar-wheel-20in</code></td>
+<td>20" (406)</td>
+<td>45</td>
+<td>177</td>
+<td>364 × 200</td>
+</tr>
+<tr>
+<td><code>led-bar-wheel-16in</code></td>
+<td>16" (305)</td>
+<td>28</td>
+<td>126</td>
+<td>262 × 200</td>
+</tr>
+</tbody>
+</table>
+<p>The one-piece poi strip (517.5 mm) is over JLCPCB's 490 mm regular flex length and their 460 × 500 mm
+assembly limit, so it needs a fab and assembler that take about 520 mm. The segmented build fits JLCPCB:</p>
+<ul>
+<li>Each 251 × 20 mm segment is under 490 mm and inside 460 × 500 mm.</li>
+<li>Panel two segments side by side (one poi), about 261 × 52 mm: 5 mm rails on both long edges with
+  fiducials and tooling holes, and tabs only away from the 10 mm at each end. The notes are on User.1.</li>
+<li>The adapter is a standard rigid 4-layer order.</li>
+</ul>
+<p>The segmented poi with its adapter is 520 mm long from the adapter's far end to the last tip (one-piece:
+517.5 mm). Face-A LED 0 is 18.55 mm from the GH-10 origin (one-piece: 11.8 mm). All wheel bars fit the
+663 × 593 mm 4-layer limit.</p>
+<h3 id="34-wheel-hub">3.4 Wheel hub</h3>
+<p>The wheel needs no cable string: the <strong>controller and a LiPo sit at the hub, on the bar itself</strong>.</p>
+<ul>
+<li><strong>Hub plate:</strong> 40 mm wide with a Ø24 mm hole that slides over the hub's axle end while the wheel is out
+  of the frame; the bar sits between the hub flange and the locknut, so dropout spacing doesn't change.</li>
+<li><strong>Wings:</strong> two 26 × 80 mm wings run perpendicular to the bar. The <strong>+y wing carries the controller</strong>
+  (printed tray on four M3 holes), the <strong>−y wing carries the LiPo</strong>. Mass-balance them: weigh controller +
+  tray and battery + tray and add a small counterweight to the lighter side, or the wheel will shake at speed.</li>
+<li><strong>Battery:</strong> a 1S LiPo pouch (e.g. 503450, ~1000 mAh, ~20 g) on the controller's JST PH battery input.</li>
+<li><strong>Wiring:</strong> two 50 mm GH-10 jumpers from controller ports 1 and 2 to the arm connectors beside the hole.</li>
+<li><strong>Side:</strong> on a front wheel, the side without the disc rotor. On a rear wheel, rim-brake wheels only,
+  non-drive side; a rear disc wheel has no free side. Check fork clearance: wings plus trays stand about
+  10 mm proud of the bar.</li>
+<li><strong>Spoke clips:</strong> four Ø3.2 mm holes along the arms take printed spoke clips.</li>
+</ul>
+<h3 id="35-rotation-sensing-variable-speed">3.5 Rotation sensing (variable speed)</h3>
+<p>Speed is never assumed. The IMU gyro on the controller measures spin rate continuously
+(3.33 kHz FIFO), and firmware fires each column when the <strong>integrated angle</strong> crosses the next column
+boundary, so the image keeps its shape whether the poi slows down or the bike speeds up. Gyro drift is
+cancelled with the once-per-revolution gravity signal from the accelerometer.</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Spin rate</th>
+<th>Gyro margin (±4000 dps)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Poi, fast spin</td>
+<td>3–4 rev/s = 1080–1440 dps</td>
+<td>2.8×</td>
+</tr>
+<tr>
+<td>700c wheel at 50 km/h</td>
+<td>6.6 rev/s = 2380 dps</td>
+<td>1.7× (limit ≈ 84 km/h)</td>
+</tr>
+<tr>
+<td>16" wheel at 25 km/h</td>
+<td>5.7 rev/s = 2060 dps</td>
+<td>1.9× (limit ≈ 48 km/h)</td>
+</tr>
+</tbody>
+</table>
+<p>The gyro reads the rotation of the whole rigid body, so it works wherever the controller is mounted
+(poi handle end or wheel hub).</p>
+<p><strong>IMU choice and mounting.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Accelerometer</th>
+<th>Mount</th>
+<th>Accelerometer usable to (IMU 0.3 m from the hand)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LSM6DSV16X (default)</strong></td>
+<td>±16 g only</td>
+<td>rotated <strong>45°</strong> in the board plane (<code>imu_mount_deg = 45</code>)</td>
+<td>22.6 g radial ≈ <strong>4.3 rev/s</strong> (≈ 4.1 rev/s with gravity)</td>
+</tr>
+<tr>
+<td>LSM6DSV320X (premium)</td>
+<td>±16 g + ±320 g channel</td>
+<td>0° or 45°</td>
+<td>any spin (high-g channel takes over per sample)</td>
+</tr>
+</tbody>
+</table>
+<p>The firmware receives samples in the sensor frame and rotates x/y into body axes by <code>imu_mount_deg</code>.
+Saturation is judged <strong>per sensor axis before the rotation</strong> (|a| ≥ 15.5 g), because after a 45° rotation both
+body axes, including the tangential one that carries the gravity phase, mix both sensor axes. With the
+LSM6DSV16X a saturated sample is left out of the accelerometer fits (the gyro still integrates it):</p>
+<ul>
+<li>the gravity-phase correction uses the unsaturated part of each revolution (if at least half of it is clean);</li>
+<li>the centre / circularity estimate skips any revolution with saturated samples, and the display mode decided
+  during spin-up is <strong>held</strong> (<code>mode_hold</code>, with a <code>saturated</code> sample count) until clean revolutions return;</li>
+<li>with the whole revolution saturated (above ≈ 4.3 rev/s on a 0.3 m tether) the angle runs on the gyro alone,
+  with the gyro-bias term learned at lower speed. Simulated 2 → 5 rev/s ramp: angle error &lt; 0.3°.</li>
+</ul>
+<h3 id="36-orbit-detection-disc-annulus-or-banner">3.6 Orbit detection: disc, annulus or banner</h3>
+<p>The same IMU also measures <strong>where the rotation centre is</strong> and <strong>how circular the path is</strong>, so the firmware
+picks how to draw (implemented in <code>firmware/core</code>, tested on synthetic motion):</p>
+<ul>
+<li><strong>Centre distance:</strong> over one revolution the radial specific force averages to −ω²·d (gravity cancels), so
+  the gyro rate ω and the mean radial acceleration give the signed distance d from the IMU to the centre.
+  With the default LSM6DSV16X @45° this works up to ≈ 22.6 g radial; faster revolutions are skipped and the
+  last decision is held (§3.5). The LSM6DSV320X's ±320 g channel keeps it working at any speed.</li>
+<li><strong>Circularity:</strong> a hand that moves in its own circle (extensions, "flowers") adds acceleration at other
+  harmonics of the spin and changes d from turn to turn. Both are turned into a hand-radius estimate and a
+  0–1 circularity score.</li>
+<li><strong>Modes</strong> (with hysteresis, two revolutions to switch):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>When</th>
+<th>What is drawn</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DISC</td>
+<td>circular and the centre within 40 mm of LED 0 (poi held at the strip root), or for a wheel within 40 mm of the hub</td>
+<td>Full circle: a raster image fills a disc whose diameter is <strong>twice the strip's length</strong></td>
+</tr>
+<tr>
+<td>ANNULUS</td>
+<td>circular, centre further away (poi on a tether)</td>
+<td>Polar image with a hole the size of the tether</td>
+</tr>
+<tr>
+<td>BANNER</td>
+<td>path not circular (a torus wider than the display)</td>
+<td>Columns wrap once per turn; no geometry assumed</td>
+</tr>
+<tr>
+<td>IDLE</td>
+<td>spin below 180 °/s</td>
+<td>LEDs off, rail cut</td>
+</tr>
+</tbody>
+</table>
+<p>Raster images (POVI mode 2, <code>docs/PROTOCOL.md</code> §2.1) are ordinary square bitmaps, so the same file works in
+DISC and ANNULUS mode. Limitation: a hand moving slowly (≈1 Hz) is nearly invisible to the accelerometer.</p>
+<h2 id="4-led-port-pinout-all-boards">4. LED port pinout (all boards)</h2>
+<p>JST GH 1.25 mm, 10-pin (SM10B-GHS-TB horizontal; BM10B-GHS-TBT vertical for controller port 2).
+The cable is <strong>straight-through</strong> (pin 1 to pin 1).</p>
+<table>
+<thead>
+<tr>
+<th>Pin</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+<th>9</th>
+<th>10</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Signal</td>
+<td>VLED</td>
+<td>VLED</td>
+<td>VLED</td>
+<td>CLK</td>
+<td>GND</td>
+<td>DAT_B</td>
+<td>GND</td>
+<td>DAT_A</td>
+<td>GND</td>
+<td>GND</td>
+</tr>
+</tbody>
+</table>
+<p>Three pins carry 5 V (GH is rated 1 A per pin) and four carry ground. Both data lines sit between ground
+pins; CLK sits between a 5 V pin and a ground pin, which is an AC return as long as the rail is decoupled.</p>
+<h2 id="5-controller">5. Controller</h2>
+<p><strong>Board:</strong> 72 × 18 mm, 6 layers.</p>
+<p><strong>Stack-up:</strong> F.Cu signals | In1 GND | In2 signals | In3 +3V3 | In4 split VBAT / VLED | B.Cu signals.</p>
+<p>The 18 mm width fits a 1" × 1/16" wall tube (22.2 mm ID). Component height limits are 6 mm on top
+and 2.5 mm underneath.</p>
+<h3 id="51-esp32-s3-pin-map">5.1 ESP32-S3 pin map</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>GPIO</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LED_CLK, LED_D0..D3</td>
+<td>1, 2, 4, 5, 6</td>
+<td>SPI2 quad output via the GPIO matrix. Port 1: DAT_A = D0, DAT_B = D1. Port 2: DAT_A = D2, DAT_B = D3.</td>
+</tr>
+<tr>
+<td>LED_EN</td>
+<td>7</td>
+<td>Enables the boost and LED rail. 100 k pull-down holds LEDs off during reset.</td>
+</tr>
+<tr>
+<td>VBAT_SENSE</td>
+<td>8 (ADC1_CH7)</td>
+<td>470 k / 470 k divider plus 100 nF.</td>
+</tr>
+<tr>
+<td>IMU SCK / MOSI / MISO / CS</td>
+<td>10 / 11 / 12 / 13</td>
+<td>SPI3 at 10 MHz.</td>
+</tr>
+<tr>
+<td>IMU INT1 / INT2</td>
+<td>14 / 15</td>
+<td>INT1 = gyro data-ready (FIFO watermark).</td>
+</tr>
+<tr>
+<td>PGOOD_N</td>
+<td>16</td>
+<td>Charger input present.</td>
+</tr>
+<tr>
+<td>USB D− / D+</td>
+<td>19 / 20</td>
+<td>Native USB for flashing and CDC console.</td>
+</tr>
+<tr>
+<td>SD CLK / CMD / D0 / D1 / D2 / D3</td>
+<td>42 / 41 / 40 / 39 / 38 / 37</td>
+<td>SDMMC 4-bit through the GPIO matrix. 10 k pull-ups.</td>
+</tr>
+<tr>
+<td>BOOT / EN</td>
+<td>0 / EN</td>
+<td>SW1 (BOOT, reachable through the tether cap) doubles as the power button through ext0 wake. SW2 is reset.</td>
+</tr>
+<tr>
+<td>UART TX / RX</td>
+<td>TXD0 / RXD0</td>
+<td>Test points TP1 / TP2.</td>
+</tr>
+<tr>
+<td>MIC SCK / WS / SD</td>
+<td>9 / 21 / 33</td>
+<td>I2S RX from the ICS-43434 (L/R tied low = left slot), 16 kHz for onset detection.</td>
+</tr>
+</tbody>
+</table>
+<p>Pins kept free: straps GPIO3, 45, 46; GPIO26 (used by PSRAM on N4R2 parts). Still unused: 17, 18, 34, 35, 36, 47, 48.</p>
+<h3 id="52-power-off-behaviour">5.2 Power-off behaviour</h3>
+<p>There is no mechanical switch.
+- <strong>Off state:</strong> firmware holds <code>LED_EN</code> low (boost off, true disconnect) and puts the ESP32 into deep
+  sleep. Drain is about 80–120 µA without a card (LDO Iq 55 µA, divider 4 µA, IMU in power-down, ESP deep
+  sleep). A microSD card on the always-on 3.3 V rail adds 50–250 µA of standby current. With a card fitted,
+  expect roughly 1–2 years of shelf life on a 2800 mAh cell. Rev C should switch the card's supply.
+- <strong>Storage:</strong> for long-term storage, unplug the JST PH battery connector.</p>
+<h2 id="6-poi-chassis-plain-clear-tube-with-bonded-bottle-neck-ends">6. Poi chassis: plain clear tube with bonded bottle-neck ends</h2>
+<p>The tube itself is <strong>not threaded</strong>. Each end gets a short <strong>PET bottle-preform neck</strong> (38 mm 2-start finish)
+bonded over the tube, so the caps screw onto a moulded thread instead of a thread cut into acrylic. This
+removes the turning and threading step, keeps the tube wall full thickness (acrylic is notch-sensitive),
+and gives an injection-moulded, liner-sealed thread for pennies. Sources: <code>docs/research/2026-10-sourcing.md</code>
+§4 (tubes) and <code>docs/research/2026-10-comparables-preforms.md</code> §2 (necks, adhesives).</p>
+<h3 id="61-tube">6.1 Tube</h3>
+<p>Small clear tubes are <strong>extruded</strong>, not cast, and hold about ±0.3–0.5 mm on the OD. Extruded acrylic is
+prone to stress cracking, so <strong>polycarbonate in the same size is the safer choice for a spinning prop</strong>; it is
+just as clear but scratches more easily.</p>
+<table>
+<thead>
+<tr>
+<th>Cell</th>
+<th>Tube (OD × wall, ID)</th>
+<th>Where</th>
+<th>OD tolerance</th>
+<th>Cell clearance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>21700 (recommended)</strong></td>
+<td><strong>1-1/4" × 1/8" (31.75 × 3.18, ID 25.4 mm)</strong>, acrylic or PC</td>
+<td>US stock (McMaster 8532K19, ePlastics about $20/m acrylic, PC about $23/m)</td>
+<td>±0.38 mm</td>
+<td>1.85 mm radial</td>
+</tr>
+<tr>
+<td>21700, metric</td>
+<td>32 × 3 mm (ID 26)</td>
+<td>RS PRO 408-4002, €26/m (EU)</td>
+<td>not stated</td>
+<td>2.15 mm</td>
+</tr>
+<tr>
+<td>18650</td>
+<td>1-1/8" × 1/8" (28.6 × 3.18, ID 22.2) or 30 × 4 mm (ID 22, PLEXIGLAS XT)</td>
+<td>US stock to check / EU distributors</td>
+<td>±0.38 / ±0.5 mm</td>
+<td>1.8–1.9 mm</td>
+</tr>
+</tbody>
+</table>
+<p>Common sizes that do <strong>not</strong> fit: 1" × 1/8" (ID 19.05, only 0.33 mm around an 18650) and 25 × 3 mm (ID 19).</p>
+<table>
+<thead>
+<tr>
+<th>Build</th>
+<th>Tube mass</th>
+<th>Poi mass</th>
+<th>Overall length</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>18650</td>
+<td>about 209 g</td>
+<td>about 300 g</td>
+<td>about 690 mm</td>
+</tr>
+<tr>
+<td>21700</td>
+<td>about 236 g</td>
+<td>about 345 g</td>
+<td>about 695 mm</td>
+</tr>
+</tbody>
+</table>
+<p>Lighter is worth chasing: comparable pixel poi weigh 111–245 g (<code>docs/research/2026-10-comparables-preforms.md</code>).
+A thinner tube now works because nothing is cut into the wall; 1-1/4" × 1/16" wall would save about 110 g,
+but check it against the 400 N cap load and floor strikes first.</p>
+<h3 id="62-bottle-neck-ends">6.2 Bottle-neck ends</h3>
+<table>
+<thead>
+<tr>
+<th>Tube</th>
+<th>Neck</th>
+<th>Fit</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>31.75 mm OD (21700)</td>
+<td><strong>38 mm 2-start</strong> (bore about 32 mm)</td>
+<td>slips <strong>over</strong> the tube with a 0.13–0.4 mm radial glue gap</td>
+<td>cell and sled load through the 32 mm bore</td>
+</tr>
+<tr>
+<td>28.6 mm OD (18650)</td>
+<td>none fits directly</td>
+<td>bond a 25 mm collar of 1-1/4" × 1-1/8" tube over the end, then the 38 mm neck</td>
+<td>sample a 33 mm neck first</td>
+</tr>
+</tbody>
+</table>
+<p>Neck bores above are nominal values from the finish standards: <strong>measure real necks before committing.</strong></p>
+<ul>
+<li><strong>Making the neck:</strong> cut the threaded finish off a 38 mm preform (or a retail juice bottle for samples)
+  just below the support ring, about 18–20 mm long. Deburr the cut.</li>
+<li><strong>Bonding:</strong> PET is hard to glue. Use an adhesive that lists untreated PET (Permabond TA4605/TA4610) or a
+  cyanoacrylate with a polyolefin primer (Permabond POP, Loctite SF 770). Both can stress-craze acrylic and
+  polycarbonate, so keep the glue line thin, avoid squeeze-out on the clear tube, and test on scrap.</li>
+<li><strong>Strength:</strong> 400 N (5× the 4 rev/s peak) over about 1,100 mm² of bond is about 0.36 MPa of shear, which is
+  low, but peel at the bond edge and thermal cycling are the real risks. Add a mechanical backup: a printed
+  retention collar behind the neck's support ring, or a cross-pin through neck and tube.</li>
+<li><strong>Proof test:</strong> hang 40 kg from each bonded end for one minute before sale.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Length (mm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>String-holder cap (on a bonded neck)</td>
+<td>18</td>
+</tr>
+<tr>
+<td>Controller sled</td>
+<td>74</td>
+</tr>
+<tr>
+<td>Cell holder</td>
+<td>70 (75 for 21700)</td>
+</tr>
+<tr>
+<td>LED flex</td>
+<td>518</td>
+</tr>
+<tr>
+<td>Tip cap (on a bonded neck)</td>
+<td>18</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>≈ 698 (703)</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-whats-inside-and-how-it-is-held">6.3 What's inside and how it is held</h3>
+<ul>
+<li><strong>Order from the hand:</strong> string-holder cap → controller sled → cell → LED flex → tip cap.</li>
+<li><strong>Sled:</strong> a printed carrier holding the controller and the tabbed cell. Two keys on the sled engage the
+  string-holder end so the USB-C window and button line up with the board.</li>
+<li><strong>Flex:</strong> the root (or the root adapter of the segmented strip, §3.1) clips into the sled, the tip clips onto
+  a pin in the tip cap. Centrifugal force pulls the flex taut when spinning; at rest, two printed TPU edge
+  rails keep it centred, with about 9 mm of air between the LEDs and the wall on each face.</li>
+<li><strong>Load path:</strong> everything pushes outward onto the tip cap: about 44 N at 3 rev/s, 78 N at 4 rev/s. The tube
+  carries it back through the two bonded necks to the string-holder cap (tube wall cross-section about
+  285 mm², so stress in the tube is well under 1 MPa).</li>
+</ul>
+<h3 id="64-caps">6.4 Caps</h3>
+<p><strong>String-holder cap</strong> (38 mm 2-start internal thread, printed or turned):
+- Liner or O-ring seal on the neck's lip (IP67 with the cap on).
+- M5 swivel eye for the leash (or your string holder of choice).
+- USB-C behind the cap: unscrew to charge, so no port is open to the weather. A flexure button over SW1
+  (BOOT, doubles as power) and an IP67 ePTFE acoustic vent for the microphone.
+- Material: SLS PA12 or turned aluminium. Design load 400 N; proof-test with a 40 kg hanging load.</p>
+<p><strong>Tip cap:</strong> an off-the-shelf 38 mm cap with a pin for the flex tip, or a printed one, plus a TPU bumper
+ring (Ø 38 mm) against floor strikes.</p>
+<h3 id="65-wheel">6.5 Wheel</h3>
+<p>No tube; the rigid bar is the structure. Conformal-coat both faces and clip a clear PETG cover over each
+arm. Controller and LiPo ride on the hub wings (§3.4).</p>
+<p><strong>E-bike wheels: power from the bike's battery.</strong> The LEDs turn with the wheel and the battery doesn't, so
+the power has to cross a rotating joint. Options, best first:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>How</th>
+<th>For</th>
+<th>Against</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Keep the hub LiPo, charge it from the bike</td>
+<td>A small 1S LiPo on the wing (§3.4); a 36/48 V → 5 V buck on the frame feeds a USB-C lead you plug in when parked</td>
+<td>No moving contacts, works on every hub</td>
+<td>Still a battery on the wheel</td>
+</tr>
+<tr>
+<td>Inductive (wireless) coupler</td>
+<td>Stationary coil on the frame side of the hub (fed by a 36/48 V → 12 V buck), rotating coil on the wheel side, rectifier + 5 V boost on the controller</td>
+<td>Sealed, no wear, no wires to tangle, no battery on the wheel</td>
+<td>10–15 W through a small air gap needs a custom coil pair; about 70–80 % efficient</td>
+</tr>
+<tr>
+<td>Slip ring</td>
+<td>A through-bore slip ring around the axle, buck converter on the frame</td>
+<td>Simple electrically</td>
+<td>Hub motors leave no room for one (the motor cables already run out of the axle); brush wear, water</td>
+</tr>
+</tbody>
+</table>
+<p>Don't run a wire from the frame to the wheel without one of these: it wraps around the axle on the first
+revolution. Whatever the option, step the bike's 36/48 V down on the frame side with a fused, isolated buck
+converter, and keep the LED current cap (2 A at 5 V per wheel side).</p>
+<h3 id="66-version-1-off-the-shelf-strip-no-custom-led-board">6.6 Version 1: off-the-shelf strip, no custom LED board</h3>
+<p>A first version can skip the custom 3 mm-pitch flex entirely:</p>
+<ul>
+<li><strong>LEDs:</strong> one 1 m, 144/m clocked strip (APA102 or HD107S, 5050) folded in half, the two halves back to back
+  = 72 LEDs per face at 6.9 mm pitch (the original prototype layout). There is no off-the-shelf 300/m+
+  clocked strip and no double-sided strip (<code>docs/research</code>), so 144/m 5050 is the practical choice.</li>
+<li><strong>Denser v1 option:</strong> SuperLightingLED's APA102-2020 strip is 250/m (≈4.0 mm pitch), 3 mm wide, sold in 0.5 m
+  semi-rigid pieces. Two pieces glued back to back on the spine give <strong>125 LEDs per face at 4.0 mm pitch</strong>
+  with no fold (POVI <code>pitch_um</code> = 4000). The price is not listed, so get a quote before choosing it over the 144/m strip.</li>
+<li><strong>Spine:</strong> a printed or aluminium flat bar glued between the two halves (structural acrylic adhesive or
+  VHB), which also stops the strip whipping and cracking its joints. The fold joint at the tip is protected
+  by the tip cap.</li>
+<li><strong>IP67:</strong> the strip and spine go inside the same tube with bonded bottle-neck ends; the caps seal on the neck; the USB-C port
+  sits under the string-holder cap (unscrew to charge) so no open port faces the outside; the microphone
+  breathes through an IP67 ePTFE acoustic vent in that cap. Test with a 30 min, 1 m immersion before sale.</li>
+<li><strong>Electronics:</strong> the same controller and firmware. The firmware geometry changes to 72 LEDs at 6.94 mm
+  pitch (POVI <code>pitch_um</code> = 6944); raster images adapt automatically.</li>
+<li><strong>Cost:</strong> see <code>docs/calc/unit_cost.py</code> (variant <code>v1</code>): about $223 per pair at 100 pairs and $179 at 1,000,
+  against $262 and $196 for the custom flex. At a $499 retail price that is about 47 % gross margin at 100 pairs
+  and 56 % at 1,000. Estimates; the main levers are the controller BOM, the tube and caps, assembly time and
+  the tariff on imported parts.</li>
+</ul>
+<h2 id="6a-cost-and-margin">6A. Cost and margin</h2>
+<p>Model: <code>docs/calc/unit_cost.py</code> (estimates; replace with quotes). The levers already applied to the design:</p>
+<ol>
+<li><strong>Outsource board assembly</strong> (JLCPCB) and keep final assembly, flashing, spin test and selling in house.
+   In-house SMT only wins if labour is free.</li>
+<li><strong>Segmented poi strip</strong> (§3.1): two identical 251 mm flex segments + a small root adapter fit JLC's
+   460 × 500 mm assembly limit and double the volume on one design.</li>
+<li><strong>LEDs bought direct from the factory</strong> and consigned to the assembler: retail is about $0.27 each;
+   factory pricing is an estimated $0.07–0.09 from a few thousand pieces.</li>
+<li><strong>No machined threads:</strong> plain tube with bonded 38 mm PET bottle-neck ends (§6).</li>
+</ol>
+<p>Model corrected on 2026-10-08 with the cost research (<code>docs/research/2026-10-cost-reduction.md</code>): tariff on
+China-origin goods is now modelled at 37.5 % (25 % Section 301 + 12.5 % from 24 Jul 2026; confirm with a broker),
+the IMU is the LSM6DSV16X ($2.47), the microphone's real price ($3.32), a microSD card, JLC flex fixtures that scale
+with quantity (up to 20 per order), two tubes per 6 ft length, and inbound freight.</p>
+<table>
+<thead>
+<tr>
+<th>Pairs built</th>
+<th>Current design, cost per pair</th>
+<th>v1 off-the-shelf strip (§6.6)</th>
+<th>Recommended cost-down (research §11)</th>
+<th>"Lite" (research §12)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100</td>
+<td>about $292</td>
+<td>about $240</td>
+<td>about $172</td>
+<td>about $112 (at 25 % tariff)</td>
+</tr>
+<tr>
+<td>1,000</td>
+<td>about $215</td>
+<td>about $191</td>
+<td>about $136</td>
+<td>about $85 (at 25 % tariff)</td>
+</tr>
+</tbody>
+</table>
+<p>The cost-down keeps 3.0 mm pitch and both faces; its main changes are 0.6 mm 4-layer FR4 LED bars instead of
+polyimide flex, ESP32-S3-MINI-1-N8 with images in flash (no microSD), ETA6003 charger, clone connectors, a 4-layer
+controller PCB, no microphone on v1 (beats come from the ESP-NOW conductor), Molicel P42A cells, a 1/16" wall tube
+and a foam sled. The "lite" model has one LED face at 4.0 mm pitch on single-sided boards with an IP5306.
+Test and software time count as free; assembly labour is 0.6 h per pair; the $2,500 FCC scan is a one-time cost
+(break-even about 8 pairs at $999 and 35 at $499 for the current design).
+The biggest remaining costs are the controller parts, the tube and caps, the 25 % tariff placeholder, and the
+LEDs. Market comparables (<code>docs/research/2026-10-comparables-preforms.md</code>): Ignis Pixel HD and Lighttoys
+Visual Pixel Poi V5 already reach about 460 LEDs/m per side (2.15–2.2 mm pitch) and weigh 139–210 g, at
+up to $2,399 a pair, so 3.0 mm pitch is competitive but not the densest, and weight is the gap to close.</p>
+<h2 id="7-firmware-contract-summary">7. Firmware contract (summary)</h2>
+<ul>
+<li><strong>Angle tracking:</strong> integrate gyro Z from the IMU FIFO (LSM6DSV16X @45°, or LSM6DSV320X) at 3.33 kHz to get angle θ. Correct
+  drift with the gravity phase from the accelerometer: band-pass at the spin frequency, then a PLL.</li>
+<li><strong>Column timing:</strong> fire column c when θ crosses c · 360°/C. Spin direction picks the playback order.</li>
+<li><strong>Faces:</strong> face B mirrors the column order (it is seen from behind) and uses radius r_k + pitch/2.
+  On wheels, arm 2 plays at c + C/2.</li>
+<li><strong>Brightness:</strong> keep the HD107S global brightness at 31 and scale RGB in firmware, which avoids
+  the global-brightness PWM flicker. The 5 V current cap is enforced per column.</li>
+<li><strong>Images and upload:</strong> POVI files live at <code>/pov/*.povi</code> on the SD card. The BLE upload protocol
+  and file format are defined in <code>docs/PROTOCOL.md</code>.</li>
+<li><strong>Shared core:</strong> everything that decides what the LEDs show is the portable C library <code>firmware/core</code>
+  (no malloc, no libm): rotation tracking, orbit detection (§3.6), image sampling, show effects, microphone
+  onset detection and the ESP-NOW codec. The ESP-IDF app only adds drivers. The same code compiles to
+  WASM for the simulator (<code>sim/</code>), so the simulator shows exactly what the device would.</li>
+<li><strong>Show modes:</strong> IMAGE (one image), PLAYLIST (timed), MUSIC. In MUSIC mode a rule table maps events to
+  effects: by default GM drums on channel 10 (kick → next image, snare → white flash, hats → brightness
+  pulse), melody notes → hue shift, microphone beats → next image. Rules can be changed per show.</li>
+<li><strong>Music over ESP-NOW (<code>docs/ESPNOW.md</code>):</strong> a <em>conductor</em> (an ESP32-S3 dev board with an SD card and an
+  I2S amplifier or line out) plays <code>song.wav</code> and broadcasts the matching <code>song.mid</code> as MIDI packets with
+  a shared clock; every poi schedules effects 20 ms ahead so all of them fire together. A poi can ask the
+  conductor to start a song (TRIGGER_SONG, e.g. a long press on the button). Without a conductor, the
+  on-board microphone drives the same rules from detected beats.</li>
+</ul>
+<h2 id="8-files">8. Files</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hardware/generator/</code></td>
+<td>Python generators (KiCad 10). Run <code>python3 build_all.py</code>. Each board is rebuilt from code, DRC-checked and exported.</td>
+</tr>
+<tr>
+<td><code>hardware/&lt;board&gt;/</code></td>
+<td>KiCad project (<code>.kicad_pro/.kicad_sch/.kicad_pcb</code>), <code>drc_report.txt</code>, <code>fab/</code> (Gerbers, drill, positions).</td>
+</tr>
+<tr>
+<td><code>hardware/led-bar-poi-seg/</code>, <code>hardware/poi-root-adapter/</code></td>
+<td>Segmented poi flex (two identical segments per poi, lap-joined) and its rigid GH-10 root adapter. Joint geometry and checks live in <code>hardware/generator/poi_seg.py</code>.</td>
+</tr>
+<tr>
+<td><code>hardware/lib/</code></td>
+<td>Project symbols, footprints and 3D models (HD107S-2020, LSM6DSV320X, ESP32-S3-MINI-1U, …).</td>
+</tr>
+<tr>
+<td><code>hardware/BUILD_MANIFEST.json</code></td>
+<td>Generator version, timestamp, and DRC result per board.</td>
+</tr>
+<tr>
+<td><code>render/</code></td>
+<td>KiCad 10 turntables with your <code>home-automation-pcbs/tools/turntable.sh</code> (<code>render/turntable_all.sh</code>), plus the Blender recipes.</td>
+</tr>
+<tr>
+<td><code>mech/</code></td>
+<td>OpenSCAD model of the poi head assembly, printable-part STLs, renders.</td>
+</tr>
+<tr>
+<td><code>docs/calc/</code></td>
+<td>Run time (<code>runtime.py</code>) and cost per pair vs volume (<code>unit_cost.py</code>).</td>
+</tr>
+<tr>
+<td><code>firmware/core/</code></td>
+<td>Portable C POV engine shared by the device and the simulator; <code>make test</code>, <code>make wasm</code>.</td>
+</tr>
+<tr>
+<td><code>sim/</code></td>
+<td>Browser simulator (React, react-three-fiber, afterimage persistence) running the core as WASM.</td>
+</tr>
+<tr>
+<td><code>docs/ESPNOW.md</code></td>
+<td>ESP-NOW packet format, clock sync and the song-trigger flow.</td>
+</tr>
+<tr>
+<td><code>docs/research/</code></td>
+<td>Sourcing notes: EMC labs, partners, LED strips, tube stock.</td>
+</tr>
+<tr>
+<td><code>app/android/</code></td>
+<td>BLE uploader app, its tests and <code>build.sh</code>.</td>
+</tr>
+<tr>
+<td><code>docs/PROTOCOL.md</code></td>
+<td>POVI file format (incl. raster images) and BLE GATT protocol v1.2.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="9-verification-status">9. Verification status</h2>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Schematic ↔ PCB netlist</td>
+<td>Verified automatically per board (exported schematic netlist compared with the generator's design).</td>
+</tr>
+<tr>
+<td>DRC (KiCad 10, <code>kicad-cli pcb drc</code> with schematic parity)</td>
+<td>LED bars and Y-interconnect: 0 violations, 0 unconnected, 0 parity errors. Controller (microphone, LSM6DSV16X at 45°): 0 parity errors, 3 copper-to-edge violations (P2_DB_R tracks on B.Cu) and 9 unconnected (U4 VBAT/FB/LED_EN, J1 VBUS, U2 VSYS, SD_D0/D1/D3/CMD pull-ups). Fan-out is complete (0 unresolved); these are short autorouter gaps to finish by hand; the live list is in <code>hardware/controller/drc_report.txt</code> (see §9.1). Segmented poi strip and root adapter: 0 / 0.</td>
+</tr>
+<tr>
+<td>LED orientation</td>
+<td>Every LED's pad positions are asserted against the expected clock/data flow during generation.</td>
+</tr>
+<tr>
+<td>Footprints</td>
+<td><strong>Verify the HD107S-2020 land pattern against your reel's datasheet before ordering.</strong> 2020 vendors differ slightly; the pin order follows the APA102-2020 datasheet.</td>
+</tr>
+<tr>
+<td>3D models</td>
+<td>Project block models for HD107S-2020, ESP32-S3-MINI-1U, the microSD socket, the PH SMD connector and TPS61022 are envelopes from datasheet dimensions, for rendering only.</td>
+</tr>
+<tr>
+<td>Android app</td>
+<td>61 JVM unit tests pass (incl. the v1.1 SD library). APK 1.1.0 builds, is zipaligned and is signed. BLE behaviour is untested without hardware or firmware.</td>
+</tr>
+<tr>
+<td>Not done</td>
+<td>Firmware, a fabricated prototype, a spin test, and thermal and impact testing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="91-controller-routing">9.1 Controller routing</h3>
+<p>The controller is generated in stages:
+1. <strong>Placement:</strong> the PLACE table in <code>controller.py</code>.
+2. <strong>Power:</strong> pours, fan-out vias for every GND / VLED / +3V3 / VBAT pad, and the boost switch node.
+3. <strong>LED bus:</strong> hand-routed from the ESP32 to the level shifter.
+4. <strong>Everything else:</strong> freerouting 1.9.0.</p>
+<p>Any connection the autorouter leaves is listed by DRC as <code>unconnected_items</code>. U4's VIN and EN fail on every run; rotating the TPS61022 so those pins face inward is the likely fix. Finish the rest in KiCad's
+interactive router before ordering, then re-run DRC. The current list is in §9 of the shared spec.</p>
+<h2 id="10-rollback">10. Rollback</h2>
+<p>Every board is reproducible from <code>hardware/generator</code>. Earlier revisions are in git history. Rev A
+(flex) was withdrawn because folding put the lanes side by side instead of back to back.</p>
+<p>KiCad 10 migration (generator 1.1.0): the boards and schematics are now saved in KiCad 10 format and are
+not readable by KiCad 7/8. To go back, check out the pre-1.1.0 generator, run it on KiCad 7
+(<code>/usr/bin/kicad-cli</code> is still installed on the build machine), and remove the <code>/usr/local/bin/kicad-cli</code>
+and <code>/usr/local/bin/k10</code> wrappers (<code>tools/setup-kicad10.sh</code>).</p>

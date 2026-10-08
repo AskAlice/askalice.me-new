@@ -1,0 +1,88 @@
+{
+  "videos": [
+    {
+      "src": "performer.mp4",
+      "caption": "Poi spun by a performer, persistence-of-vision shader (simulator)"
+    },
+    {
+      "src": "bike_city.mp4",
+      "caption": "Both wheels lit, city at night (simulator)"
+    },
+    {
+      "src": "fatbike.mp4",
+      "caption": "Fat bike, 26 in wheel boards (simulator)"
+    }
+  ],
+  "stills": [
+    {
+      "src": "sim-disc.png",
+      "caption": "Disc mode: near-perfect circle, image at double radius"
+    },
+    {
+      "src": "sim-annulus.png",
+      "caption": "Annulus mode"
+    },
+    {
+      "src": "assembly-21700.png",
+      "caption": "Poi head assembly, 21700 cell (OpenSCAD)"
+    },
+    {
+      "src": "handend-21700.png",
+      "caption": "Hand end: string cap, controller sled, cell"
+    },
+    {
+      "src": "tipend-21700.png",
+      "caption": "Tip end and bonded bottle neck"
+    }
+  ],
+  "boards": [
+    {
+      "name": "controller",
+      "still": "controller.png",
+      "video": "controller.mp4",
+      "caption": "Controller: ESP32-S3, LSM6DSV16X at 45\u00b0, microSD, mic, charger"
+    },
+    {
+      "name": "led-bar-poi",
+      "still": "led-bar-poi.png",
+      "video": "led-bar-poi.mp4",
+      "caption": "Poi LED bar, HD107S-2020 both faces at 3.0 mm"
+    },
+    {
+      "name": "led-bar-poi-seg",
+      "still": "led-bar-poi-seg.png",
+      "video": "led-bar-poi-seg.mp4",
+      "caption": "Poi LED bar segment (two per head)"
+    },
+    {
+      "name": "poi-root-adapter",
+      "still": "poi-root-adapter.png",
+      "video": "poi-root-adapter.mp4",
+      "caption": "Poi root adapter"
+    },
+    {
+      "name": "led-bar-wheel-700c",
+      "still": "led-bar-wheel-700c.png",
+      "video": "led-bar-wheel-700c.mp4",
+      "caption": "Wheel bar, 700c"
+    },
+    {
+      "name": "led-bar-wheel-26in",
+      "still": "led-bar-wheel-26in.png",
+      "video": "led-bar-wheel-26in.mp4",
+      "caption": "Wheel bar, 26 in (fat bike)"
+    },
+    {
+      "name": "led-bar-wheel-20in",
+      "still": "led-bar-wheel-20in.png",
+      "video": "led-bar-wheel-20in.mp4",
+      "caption": "Wheel bar, 20 in"
+    },
+    {
+      "name": "y-interconnect",
+      "still": "y-interconnect.png",
+      "video": "y-interconnect.mp4",
+      "caption": "Y-interconnect"
+    }
+  ]
+}

@@ -113,6 +113,18 @@ export interface Post {
 
 export const POSTS: Post[] = [
   {
+    id: 4,
+    slug: 'pov-poi-design-spec',
+    published: '2026-10-08',
+    meta: '2026 · design spec',
+    indexMeta: '2026 · spec · hardware, kicad, esp32',
+    homeMeta: '2026 · spec',
+    title: 'POV poi & bike wheels: the design spec',
+    excerpt: '333 LEDs/m on both faces, an ESP32-S3 timing every column from a gyro, and an IP67 tube made from bottle necks.',
+    indexExcerpt:
+      'Persistence-of-vision poi and wheel bars: KiCad 10 boards, a WebAssembly firmware simulator, costs per pair and the full spec.',
+  },
+  {
     id: 1,
     slug: 'animating-flexbox-children',
     published: '2024-06-12',

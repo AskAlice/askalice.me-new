@@ -4,7 +4,7 @@ import { parsePath, pathFor, type Route } from './lib/routes'
 
 export type View = 'home' | 'blog' | 'post' | 'demo' | 'photos'
 export type DemoId = 'search' | 'geo' | 'flex' | 'midi' | 'pcbs'
-export type PostId = 1 | 2 | 3
+export type PostId = 1 | 2 | 3 | 4
 
 interface SiteState {
   view: View
