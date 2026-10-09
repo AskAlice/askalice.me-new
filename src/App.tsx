@@ -44,7 +44,7 @@ export default function App() {
         {view === 'home' && (
           <div>
             <Hero />
-            <StatsBar />
+            {!EMU_LLC && <StatsBar />}
             <About />
             {EMU_LLC ? <Team /> : <Experience />}
             <Demos />

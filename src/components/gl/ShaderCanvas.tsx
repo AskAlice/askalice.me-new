@@ -41,7 +41,11 @@ function buildProgram(gl: WebGLRenderingContext, frag: string): Prog | string {
     return fs
   }
   const program = gl.createProgram()
-  if (!program) return 'could not create program'
+  if (!program) {
+    gl.deleteShader(vs)
+    gl.deleteShader(fs)
+    return 'could not create program'
+  }
   gl.attachShader(program, vs)
   gl.attachShader(program, fs)
   gl.bindAttribLocation(program, 0, 'position')
@@ -93,6 +97,8 @@ export function ShaderCanvas({
   const glRef = useRef<WebGLRenderingContext | null>(null)
   const progRef = useRef<Prog | null>(null)
   const fragRef = useRef(frag)
+  // last source that compiled — what a restored context rebuilds if the editor holds a broken edit
+  const goodFragRef = useRef(frag)
   const onErrRef = useRef(onErr)
   onErrRef.current = onErr
 
@@ -108,6 +114,7 @@ export function ShaderCanvas({
     }
     if (progRef.current) gl.deleteProgram(progRef.current.program)
     progRef.current = next
+    goodFragRef.current = frag
     onErrRef.current?.('')
   }, [frag])
 
@@ -131,9 +138,12 @@ export function ShaderCanvas({
 
     const setup = () => {
       buf = initGeometry(gl)
-      const p = buildProgram(gl, fragRef.current)
-      if (typeof p === 'string') onErrRef.current?.(shortErr(p))
-      else progRef.current = p
+      let p = buildProgram(gl, fragRef.current)
+      if (typeof p === 'string') {
+        onErrRef.current?.(shortErr(p))
+        p = buildProgram(gl, goodFragRef.current) // keep drawing the last good shader
+      } else goodFragRef.current = fragRef.current
+      if (typeof p !== 'string') progRef.current = p
     }
 
     const resize = () => {

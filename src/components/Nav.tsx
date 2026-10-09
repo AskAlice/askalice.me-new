@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LINKS } from '../lib/content'
 import { NAV_ITEMS, NAV_SECTION_IDS, currentNavHref } from '../lib/navItems'
 import { useActiveSection } from '../lib/useActiveSection'
@@ -17,20 +17,27 @@ export function Nav() {
   const section = useActiveSection(NAV_SECTION_IDS, view === 'home')
   const current = currentNavHref(view, section)
   const [open, setOpen] = useState(false)
+  const toggleRef = useRef<HTMLButtonElement>(null)
 
-  // close on Escape and whenever the route view changes
+  // close whenever the route view changes; Escape closes and hands focus back to the toggle
   useEffect(() => setOpen(false), [view])
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      toggleRef.current?.focus()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  const ariaFor = (href: string) =>
-    href === current ? (NAV_ITEMS.find((i) => i.href === href)?.views?.includes(view) ? 'page' : 'location') : undefined
+  /** 'location' for a scroll-spied home section, 'page' for the exact page, 'true' for an ancestor (Writing on a post). */
+  const ariaFor = (href: string): 'page' | 'location' | 'true' | undefined => {
+    if (href !== current) return undefined
+    if (view === 'home') return 'location'
+    return location.pathname.replace(/\/+$/, '') === href ? 'page' : 'true'
+  }
 
   return (
     <nav aria-label="Primary" className="fixed top-0 left-0 right-0 z-100 bg-[rgba(23,21,30,0.78)] backdrop-blur-14px border-b border-white/7">
@@ -74,6 +81,7 @@ export function Nav() {
         </div>
 
         <button
+          ref={toggleRef}
           type="button"
           className="lg:hidden w-42px h-42px -mr-6px flex items-center justify-center rounded-11px text-bright bg-white/5 border border-white/10"
           aria-expanded={open}
@@ -85,42 +93,45 @@ export function Nav() {
         </button>
       </div>
 
-      {open && (
-        <div id="mobile-nav" className="lg:hidden border-t border-white/7 bg-[rgba(23,21,30,0.96)] px-[clamp(18px,5vw,56px)] pt-6px pb-20px shadow-[0_24px_40px_rgba(0,0,0,0.45)]">
-          {NAV_ITEMS.map((i) => (
-            <AppLink
-              key={i.href}
-              href={i.href}
-              ariaCurrent={ariaFor(i.href)}
-              onNavigate={() => setOpen(false)}
-              className={`flex items-center gap-12px py-14px text-18px font-500 border-b border-white/6 ${i.href === current ? 'text-bright' : 'text-muted'}`}
-            >
-              <span className={`w-6px h-6px rounded-full ${i.href === current ? 'bg-flamingo' : 'bg-white/12'}`} />
-              {i.label}
-            </AppLink>
-          ))}
-          <div className="flex gap-10px mt-18px">
-            <a
-              href={LINKS.github}
-              target="_blank"
-              rel="me noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-8px text-14px text-ink bg-flamingo py-12px rounded-full font-600"
-            >
-              <GithubIcon />
-              GitHub
-            </a>
-            <a
-              href={LINKS.linkedin}
-              target="_blank"
-              rel="me noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-8px text-14px text-bright bg-white/6 border border-white/12 py-12px rounded-full font-600"
-            >
-              <LinkedinIcon />
-              LinkedIn
-            </a>
-          </div>
+      {/* always rendered so aria-controls resolves; `hidden` keeps it out of the a11y tree when closed */}
+      <div
+        id="mobile-nav"
+        hidden={!open}
+        className="lg:hidden max-h-[calc(100dvh-66px)] overflow-y-auto overscroll-contain border-t border-white/7 bg-[rgba(23,21,30,0.96)] px-[clamp(18px,5vw,56px)] pt-6px pb-20px shadow-[0_24px_40px_rgba(0,0,0,0.45)]"
+      >
+        {NAV_ITEMS.map((i) => (
+          <AppLink
+            key={i.href}
+            href={i.href}
+            ariaCurrent={ariaFor(i.href)}
+            onNavigate={() => setOpen(false)}
+            className={`flex items-center gap-12px py-14px text-18px font-500 border-b border-white/6 ${i.href === current ? 'text-bright' : 'text-muted'}`}
+          >
+            <span className={`w-6px h-6px rounded-full ${i.href === current ? 'bg-flamingo' : 'bg-white/12'}`} />
+            {i.label}
+          </AppLink>
+        ))}
+        <div className="flex gap-10px mt-18px">
+          <a
+            href={LINKS.github}
+            target="_blank"
+            rel="me noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-8px text-14px text-ink bg-flamingo py-12px rounded-full font-600"
+          >
+            <GithubIcon />
+            GitHub
+          </a>
+          <a
+            href={LINKS.linkedin}
+            target="_blank"
+            rel="me noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-8px text-14px text-bright bg-white/6 border border-white/12 py-12px rounded-full font-600"
+          >
+            <LinkedinIcon />
+            LinkedIn
+          </a>
         </div>
-      )}
+      </div>
     </nav>
   )
 }

@@ -67,7 +67,8 @@ export function Hero() {
               <button
                 type="button"
                 onClick={toggleEditor}
-              aria-expanded={showEditor}
+                aria-expanded={showEditor}
+                aria-controls="shader-editor"
                 className="flex items-center gap-8px font-mono text-13.5px font-500 px-22px py-14px rounded-full bg-white/6 border border-white/20 text-rose transition-transform duration-150 hover:-translate-y-2px"
               >
                 {'</>'} edit shader

@@ -47,7 +47,7 @@ function CountUp({ target }: { target: number }) {
 export function StatsBar() {
   return (
     <section aria-label="At a glance" className="section-pad pt-[clamp(48px,7vw,88px)]">
-      <ul className="grid grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1 gap-14px m-0 p-0 list-none">
+      <ul role="list" className="grid grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1 gap-14px m-0 p-0 list-none">
         {STATS.map((s) => (
           <li key={s.label} className="relative overflow-hidden border border-white/9 rounded-16px bg-card px-22px py-20px">
             <span aria-hidden="true" className="absolute top-0 left-22px w-28px h-2px" style={{ background: s.color }} />

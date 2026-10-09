@@ -18,7 +18,7 @@ export function AppLink({
   className?: string
   children: ReactNode
   ariaLabel?: string
-  ariaCurrent?: 'page' | 'location'
+  ariaCurrent?: 'page' | 'location' | 'true'
   onNavigate?: () => void
 }) {
   const goPath = useSite((s) => s.goPath)

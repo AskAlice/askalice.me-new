@@ -15,7 +15,8 @@ export function ShaderEditor() {
     // Phones: bottom sheet across the full width (46vw was ~180px wide on a phone).
     // md+: the original floating panel, top-right of the hero.
     <div
-      role="dialog"
+      id="shader-editor"
+      role="region"
       aria-label="Shader editor"
       className="fixed left-12px right-12px bottom-12px z-150 max-h-60vh md:absolute md:left-auto md:bottom-auto md:top-90px md:right-[clamp(16px,4vw,40px)] md:z-9 md:w-[min(460px,46vw)] md:max-h-72vh flex flex-col bg-[rgba(14,11,20,0.82)] md:bg-[rgba(14,11,20,0.6)] backdrop-blur-13px border border-white/16 rounded-14px shadow-[0_24px_70px_rgba(0,0,0,0.55)] overflow-hidden"
     >
