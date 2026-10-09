@@ -33,7 +33,7 @@ export function Demos() {
         Things running right here in the page.
       </h2>
       <p className="text-muted text-17px max-w-620px mt-0 mb-44px leading-[1.55]">
-        Live tiles, a Chrome omnibox project, a MIDI viz, and an IoT PCB swarm. Click one to open the full page.
+        Live tiles, a Chrome omnibox you can type into, a MIDI viz, one of my tracks, and an IoT PCB swarm. Click one to open the full page.
       </p>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-18px mb-64px">
@@ -73,7 +73,7 @@ export function Demos() {
               <span className="font-mono text-11px text-sky border border-sky/30 rounded-5px px-7px py-3px">TS</span>
             </div>
             <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
-              Chrome omnibox suggestions with DDG bangs, DNS digs, IP geolocation, and an LLM that picks Google vs DuckDuckGo.
+              Chrome omnibox suggestions with DDG bangs, DNS digs and IP geolocation — try it live against the real engine.
             </p>
             <AppLink href="/demos/search" className="font-mono text-12.5px text-pink">
               open project →
@@ -139,6 +139,34 @@ export function Demos() {
           </div>
         </div>
 
+        {/* I Promise — spectrogram */}
+        <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
+          <AppLink href="/demos/music" className="h-200px relative overflow-hidden bg-black block">
+            <img
+              src={DEMOS.music.preview}
+              alt="Spectrogram of the track I Promise"
+              width={2400}
+              height={320}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover object-left opacity-90"
+            />
+            <span className="absolute bottom-14px left-16px font-mono text-11px text-white/85">press play · scrub the spectrogram</span>
+          </AppLink>
+          <div className="p-20px">
+            <div className="flex items-center justify-between gap-10px">
+              <h3 className="text-18px font-600 m-0">I Promise</h3>
+              <span className="font-mono text-11px text-pink border border-flamingo/30 rounded-5px px-7px py-3px">Audio</span>
+            </div>
+            <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
+              One of my tracks as a scrubbable spectrogram, with a live Web Audio spectrum and the partials at the playhead.
+            </p>
+            <AppLink href="/demos/music" className="font-mono text-12.5px text-pink">
+              open player →
+            </AppLink>
+          </div>
+        </div>
+
         {/* home-automation-pcbs */}
         <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
           <AppLink href="/demos/pcbs" className="h-200px relative overflow-hidden bg-[#14111b] block">
@@ -156,7 +184,7 @@ export function Demos() {
               <span className="font-mono text-11px text-mint border border-mint/30 rounded-5px px-7px py-3px">KiCad</span>
             </div>
             <p className="text-muted text-14px leading-[1.55] mt-9px mb-16px">
-              Eleven ESP32 room nodes — turntables of the KiCad 3D renders. ESPHome, Matter/Thread, early-stage.
+              Twelve ESP32 room nodes — turntables of the KiCad 3D renders, with specs per board. ESPHome, Matter/Thread, early-stage.
             </p>
             <AppLink href="/demos/pcbs" className="font-mono text-12.5px text-pink">
               open project →

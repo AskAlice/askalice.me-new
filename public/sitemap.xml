@@ -13,5 +13,6 @@
   <url><loc>https://askalice.me/demos/midi</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://askalice.me/demos/geo</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://askalice.me/demos/pov</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://askalice.me/demos/music</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://askalice.me/demos/pcbs</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>

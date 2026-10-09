@@ -32,5 +32,14 @@ export default defineConfig({
     // a stray package.json with `workspaces` above the checkout would expose
     // that whole folder. Pin it to this project.
     fs: { allow: [PROJECT_DIR] },
+    // dev stand-in for api/suggest.ts (Vite doesn't run Vercel functions):
+    // /api/suggest?type=json&q=… → https://search.emu.sh/suggest?type=json&q=…
+    proxy: {
+      '/api/suggest': {
+        target: 'https://search.emu.sh',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/suggest/, '/suggest'),
+      },
+    },
   },
 })

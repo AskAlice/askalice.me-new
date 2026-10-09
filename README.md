@@ -29,8 +29,11 @@ last good program rendering and surfaces the compile error.
 ```sh
 npm install
 npm run dev
-npm test        # vitest: pure helpers (routes, nav, count-up, shader errors)
+npm test        # vitest
 ```
+
+`/api/suggest` (the live search.emu.sh omnibox on `/demos/search`) is a Vercel
+function in `api/suggest.ts`; `npm run dev` proxies it to search.emu.sh instead.
 
 ## Deploy
 

@@ -6,6 +6,7 @@ import { Nav } from './components/Nav'
 import { Seo } from './components/Seo'
 import { Hero } from './components/Hero'
 import { StatsBar } from './components/StatsBar'
+import { AffiliationLogos } from './components/AffiliationLogos'
 import { About } from './components/About'
 import { Experience } from './components/Experience'
 import { Demos } from './components/Demos'
@@ -46,6 +47,7 @@ export default function App() {
           <div>
             <Hero />
             {!EMU_LLC && <StatsBar />}
+            {!EMU_LLC && <AffiliationLogos />}
             <About />
             {EMU_LLC ? <Team /> : <Experience />}
             <Demos />

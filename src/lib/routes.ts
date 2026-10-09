@@ -4,7 +4,7 @@ import { POSTS } from './content'
 export const SITE = 'https://askalice.me'
 export const SECTIONS = ['work', 'demos', 'services', 'writing', 'resume'] as const
 export type Section = (typeof SECTIONS)[number]
-export const DEMO_IDS: DemoId[] = ['search', 'geo', 'flex', 'midi', 'pcbs', 'pov']
+export const DEMO_IDS: DemoId[] = ['search', 'geo', 'flex', 'midi', 'pcbs', 'pov', 'music']
 
 export type Route = {
   view: View

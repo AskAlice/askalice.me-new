@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ROLES, SERVICES } from './content'
-import { homeGraph, jsonLdScript, offerCatalogLd, personLd } from './schema'
+import { homeGraph, isoDuration, jsonLdScript, musicRecordingLd, offerCatalogLd, personLd } from './schema'
 
 describe('personLd', () => {
   const p = personLd()
@@ -58,5 +58,19 @@ describe('index.html', () => {
     const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
     expect(html).toContain('<!--jsonld-->')
     expect(html).not.toContain('application/ld+json')
+  })
+})
+
+describe('musicRecordingLd', () => {
+  it('describes the track with an ISO duration, the artist and the MP3', () => {
+    const m = musicRecordingLd('https://askalice.me/demos/music')
+    expect(m['@type']).toBe('MusicRecording')
+    expect(m.duration).toBe('PT3M27S')
+    expect(m.byArtist['@id']).toBe('https://askalice.me/#person')
+    expect(m.audio).toMatchObject({ '@type': 'AudioObject', encodingFormat: 'audio/mpeg' })
+  })
+  it('formats ISO 8601 durations', () => {
+    expect(isoDuration(0)).toBe('PT0M0S')
+    expect(isoDuration(61.6)).toBe('PT1M2S')
   })
 })

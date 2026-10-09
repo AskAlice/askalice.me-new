@@ -1,8 +1,9 @@
 {
   "rewrites": [
+    { "source": "/api/suggest", "destination": "/api/suggest" },
     { "source": "/(work|demos|services|writing|resume|photography|blog)", "destination": "/index.html" },
     { "source": "/blog/:slug", "destination": "/index.html" },
-    { "source": "/demos/(search|geo|flex|midi|pcbs|pov)", "destination": "/index.html" },
+    { "source": "/demos/(search|geo|flex|midi|pcbs|pov|music)", "destination": "/index.html" },
     { "source": "/:path*/", "destination": "/api/proxy?p=:path*/" },
     { "source": "/:path*", "destination": "/api/proxy?p=:path*" }
   ]

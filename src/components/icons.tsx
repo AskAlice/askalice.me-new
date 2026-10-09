@@ -77,3 +77,21 @@ export const MenuIcon = ({ size = 20, ...p }: P) => (
 export const CloseIcon = ({ size = 20, ...p }: P) => (
   <svg {...base(size, p)}><path d="M18 6 6 18M6 6l12 12" /></svg>
 )
+export const ChevronLeftIcon = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)}><path d="m15 18-6-6 6-6" /></svg>
+)
+export const ChevronRightIcon = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)}><path d="m9 18 6-6-6-6" /></svg>
+)
+export const PlayIcon = ({ size = 15, ...p }: P) => (
+  <svg {...base(size, p)}><path d="M7 4.5v15l12-7.5z" fill="currentColor" /></svg>
+)
+export const PauseIcon = ({ size = 15, ...p }: P) => (
+  <svg {...base(size, p)}><path d="M8 5v14M16 5v14" /></svg>
+)
+export const RestartIcon = ({ size = 15, ...p }: P) => (
+  <svg {...base(size, p)}><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+)
+export const SearchIcon = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, p)}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+)

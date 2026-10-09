@@ -53,7 +53,7 @@ export const ROLES: Omit<Role, 'badge'>[] = [
     location: 'Denver · Boulder',
     current: true,
     description:
-      'Standing up an early-stage, revenue-first hardware incubator — Tindie, emu.sh, eBay, and Amazon before any VC ask. Designing an open KiCad swarm of ESP32-C3/C6/S3/H2 room nodes for ESPHome, Matter/Thread, Zigbee, BLE, and Wi-Fi, with SparkFun and Colorado PCB Assembly as partners in motion. Eleven boards on GitHub so far; none fabbed yet.',
+      'Standing up an early-stage, revenue-first hardware incubator — Tindie, emu.sh, eBay, and Amazon before any VC ask. Designing an open KiCad swarm of ESP32-C3/C6/S3/H2 room nodes for ESPHome, Matter/Thread, Zigbee, BLE, and Wi-Fi, with SparkFun and Colorado PCB Assembly as partners in motion. Twelve boards on GitHub so far; none fabbed yet.',
     tags: ['KiCad', 'ESP32', 'ESPHome', 'Matter', 'JLCPCB'],
   },
   {
@@ -279,7 +279,7 @@ export const DEMOS: Record<
     title: string
     desc: string
     tech: string
-    repo: string
+    repo?: string
     live?: string
     embed?: string
     note?: string
@@ -348,9 +348,16 @@ export const DEMOS: Record<
     preview: '/demos/pov-poi/sim-disc.png',
     note: 'Drag to orbit · pick a view in the panel',
   },
+  music: {
+    title: 'I Promise — spectrogram',
+    desc: 'My track “I Promise” as a scrubbable spectrogram: click to seek, a live Web Audio spectrum while it plays, and the dominant pitch and first eight partials at the playhead.',
+    tech: 'Web Audio · Canvas · FL Studio',
+    live: 'https://emu.bz/i-promise.mp3',
+    preview: '/media/music/i-promise-spectrogram.webp',
+  },
   pcbs: {
     title: 'home-automation-pcbs',
-    desc: 'Open KiCad swarm of ESP32 room nodes — ESPHome, Matter/Thread, Zigbee, BLE, Wi-Fi. Early-stage designs; renders live here because GitHub main never got the binaries.',
+    desc: 'Open KiCad swarm of ESP32 room nodes — ESPHome, Matter/Thread, Zigbee, BLE, Wi-Fi. Early-stage designs: each board’s specs and raytraced KiCad renders, straight from the repo.',
     tech: 'KiCad 8 · ESP32 · ESPHome',
     repo: 'https://github.com/AskAlice/home-automation-pcbs',
     features: [
@@ -369,6 +376,14 @@ export const DEMOS: Record<
   },
 }
 
+/** Track metadata for schema.org (kept in sync with lib/music/i-promise.json by a test). */
+export const TRACK = {
+  name: 'I Promise',
+  durationSec: 207.38,
+  audioUrl: 'https://emu.bz/i-promise.mp3',
+  image: '/media/music/i-promise-spectrogram.webp',
+}
+
 export const SEARCH_MEDIA = (DEMOS.search.features ?? []).flatMap((f) => (f.img ? [f.img] : []))
 export const PCB_MEDIA = [
   'sensenode-c6',
@@ -384,6 +399,8 @@ export const PCB_MEDIA = [
   'threadrcp-h2',
 ].map((id) => `demos/pcbs/${id}/turntable.gif`)
 
+// Repo cards: the current set merged with the AI Studio draft's FeaturedProjects
+// list. Descriptions checked against each repo's README (Oct 2026).
 export const GITHUB_CARDS = [
   {
     name: 'home-automation-pcbs',
@@ -393,11 +410,18 @@ export const GITHUB_CARDS = [
     href: 'https://github.com/AskAlice/home-automation-pcbs',
   },
   {
-    name: 'vacantfuture.com',
-    desc: 'Personal project site — featured here; original host TLS is expired.',
-    lang: 'Web',
+    name: 'search.emu.sh',
+    desc: 'Fastify suggestion provider + search engine: DDG bangs, DNS digs, IP geolocation, LLM engine routing.',
+    lang: 'TypeScript',
+    langColor: '#8fc9f5',
+    href: 'https://github.com/AskAlice/search.emu.sh',
+  },
+  {
+    name: 'react-three-midi',
+    desc: 'MIDI playback driving a react-three-fiber scene with Perlin-noise terrain and glitch post-processing.',
+    lang: 'JavaScript',
     langColor: '#ffd47e',
-    href: 'https://vacantfuture.com/',
+    href: 'https://github.com/AskAlice/react-three-midi',
   },
   {
     name: 'react-flex-animations',
@@ -411,7 +435,28 @@ export const GITHUB_CARDS = [
     desc: 'A "workbench for developers" — tooling & dotfiles for comma.ai\'s open-source self-driving stack.',
     lang: 'Shell',
     langColor: '#ffd47e',
-    href: LINKS.github,
+    href: 'https://github.com/AskAlice/oh-my-comma',
+  },
+  {
+    name: 'yksofttoken',
+    desc: 'Software YubiKey (HOTP) token. My fork rewrites it in Go with a Fyne GUI, cross-platform builds and a Windows installer.',
+    lang: 'Go',
+    langColor: '#7fe0b0',
+    href: 'https://github.com/AskAlice/yksofttoken',
+  },
+  {
+    name: 'TTR-Tools',
+    desc: 'AutoHotkey helper for Toontown Rewritten: anti-AFK, garden bot, teleport macros, a hands-free trampoline bot. Retired.',
+    lang: 'AutoHotkey',
+    langColor: '#b3a4f7',
+    href: 'https://github.com/AskAlice/TTR-Tools',
+  },
+  {
+    name: 'vacantfuture.com',
+    desc: 'Personal project site — featured here; original host TLS is expired.',
+    lang: 'Web',
+    langColor: '#ffd47e',
+    href: 'https://vacantfuture.com/',
   },
   {
     name: 'bitpixels',

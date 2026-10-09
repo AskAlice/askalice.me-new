@@ -2,7 +2,7 @@
 // can't drift. Used at runtime by <Seo> (per-route graphs) and at build time by
 // the jsonLd() Vite plugin, which bakes the home graph into index.html for
 // crawlers that don't run JavaScript.
-import { GRAVATAR, LINKS, ROLES, SERVICES } from './content'
+import { GRAVATAR, LINKS, ROLES, SERVICES, TRACK } from './content'
 import { SITE } from './routes'
 
 export const OG_IMG = `${GRAVATAR}?s=512&d=identicon`
@@ -71,6 +71,26 @@ export function homeGraph() {
         isPartOf: { '@id': `${SITE}/#site` },
       },
     ],
+  }
+}
+
+/** ISO 8601 duration (PT#M#S) for a length in seconds. */
+export function isoDuration(secs: number): string {
+  const s = Math.round(secs)
+  return `PT${Math.floor(s / 60)}M${s % 60}S`
+}
+
+/** MusicRecording for /demos/music: Alice's track, with the MP3 as its AudioObject. */
+export function musicRecordingLd(pageUrl: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'MusicRecording',
+    name: TRACK.name,
+    url: pageUrl,
+    duration: isoDuration(TRACK.durationSec),
+    byArtist: personRef(),
+    image: `${SITE}${TRACK.image}`,
+    audio: { '@type': 'AudioObject', contentUrl: TRACK.audioUrl, encodingFormat: 'audio/mpeg', duration: isoDuration(TRACK.durationSec) },
   }
 }
 

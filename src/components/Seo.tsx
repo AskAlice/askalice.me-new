@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useSite } from '../store'
 import { DEMOS, POSTS } from '../lib/content'
 import { SITE, absUrl, pathFor } from '../lib/routes'
-import { HOME_TITLE, OG_IMG, homeGraph, personRef } from '../lib/schema'
+import { HOME_TITLE, OG_IMG, homeGraph, musicRecordingLd, personRef } from '../lib/schema'
 
 const DESC =
   'Front-end-leaning full-stack engineer in Arvada, CO. Portfolio, live WebGL demos, writing, and résumé.'
@@ -86,7 +86,7 @@ export function Seo() {
     } else if (view === 'demo' && demo && activeDemo) {
       title = `${demo.title} — Alice Knag`
       description = demo.desc
-      ld = {
+      ld = activeDemo === 'music' ? musicRecordingLd(url) : {
         '@context': 'https://schema.org',
         '@type': 'SoftwareSourceCode',
         name: demo.title,
