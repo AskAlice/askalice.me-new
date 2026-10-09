@@ -1,0 +1,156 @@
+<p>I bought a $50 "CMX X26 Ultra" — marketed as an Android 15 flagship phone. What
+arrived was an 11-inch MediaTek tablet running Android 10 from 2019, with its specs
+spoofed and a preinstalled firmware-level backdoor from the Adups FOTA family. This is
+the teardown: what it claims, what it actually is, the command-and-control mechanism I
+recovered from the firmware, and where the consumer-protection law lands.</p>
+
+<p>Everything here is analysis of a device I own. Sensitive identifiers (serial, IMEI,
+eMMC CID, the Firebase API key) and the exact step-by-step unlock/root/cert-injection
+mechanics are deliberately left out of this public writeup.</p>
+
+<h2>1. Claimed vs. actual</h2>
+
+<table style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:15px">
+  <thead><tr>
+    <th style="text-align:left;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.14);color:#ece9f2">Marketed as</th>
+    <th style="text-align:left;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.14);color:#ece9f2">Actually is</th>
+  </tr></thead>
+  <tbody>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">"CMX X26 Ultra" smartphone</td><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">Generic MediaTek reference board <code>k50v1_64_bsp</code>, ODM brand <code>alps</code></td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">Android 15.0</td><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)"><strong>Android 10</strong> (SDK 29), on an Oreo-era vendor image</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">High RAM / storage</td><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)"><strong>4 GB / 32 GB</strong> — per the OEM's own <code>ro.product.real.*</code> props</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">Modern flagship SoC</td><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)"><strong>MT6755 Helio P10</strong> (2016), kernel <strong>3.18.119</strong></td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">Phone</td><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">11" 1280×800 incell <strong>tablet</strong> panel</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">Teclast M40 fingerprint</td><td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07)">Spoofed <code>Teclast/M40_Plus</code> build fingerprint grafted onto an Android 10 build</td></tr>
+    <tr><td style="padding:8px 12px">Security patch 2025-10-05</td><td style="padding:8px 12px">Faked-forward on a 2019-era build</td></tr>
+  </tbody>
+</table>
+
+<p>The vendor image is older still — a Treble FCM level of 2 (Android 8.1) and
+<code>ro.product.first_api_level=26</code> (Android 8.0). So an Oreo-era vendor, an
+Android 10 system on top, sold as "Android 15."</p>
+
+<h2>2. Forensic baseline</h2>
+
+<p>Before touching anything I took a full image of the firmware. The SoC's BootROM
+reported itself fully unprotected (secure-boot chain disabled), so every partition
+except user data could be read out and hashed into an off-device, encrypted archive —
+including the irreplaceable per-device partitions (<code>nvram</code>,
+<code>nvdata</code>, <code>proinfo</code>, the protected regions). That baseline made
+the rest of the work reversible: the device could always be restored.</p>
+
+<h2>3. Preinstalled-app triage</h2>
+
+<p>Most of what ships is ordinary MediaTek board-support bloat. Two policy oddities on a
+US-marketed device: <strong>RuStore</strong> (VK's Russian app store) preinstalled as a
+privileged system app, and Aurora Store. Neither is malware.</p>
+
+<p>The real finding is <strong><code>com.adups.fota</code> v5.28</strong>, baked into
+<code>/system</code> and running from first boot. It is marked <code>PERSISTENT</code>
+and <code>PRIVILEGED</code>, and it holds the permission set of a remote-control
+backdoor: <code>RECOVERY</code> (write OTA packages straight to the recovery partition),
+<code>WRITE_SECURE_SETTINGS</code>, <code>REBOOT</code>, silent
+<code>READ_PRIVILEGED_PHONE_STATE</code>, and Firebase Cloud Messaging receive. This is
+the same package family Kryptowire disclosed in 2016 for exfiltrating user data to China.</p>
+
+<h2>4. The command-and-control mechanism</h2>
+
+<p>The interesting part is how the C2 hid. A first pass over 21,676 extracted strings
+found <em>zero</em> references to any Adups server — no plaintext host, no encrypted
+blob. The reason turned out to be a neat trick: Adups builds its sensitive strings at
+runtime out of <code>char[]</code> arrays rather than storing them as string constants,
+so they never appear in the compiled DEX and <code>strings</code>/grep simply can't see
+them.</p>
+
+<p>Writing a small decoder that walks the decompiled source and reassembles every
+<code>char[]</code> array recovered the endpoints:</p>
+
+<ul>
+  <li><strong><code>fota5p.adups.cn</code></strong> — primary check-in host, in China</li>
+  <li><code>fota5p.adups.com</code> / <code>fruet.adups.com</code> — region-selected counterparts</li>
+  <li>API base <code>/otainter-5.0/fota5/</code>, with <code>fcmReport.do</code> reporting command activity back</li>
+</ul>
+
+<p>The control flow: the device checks in to the Adups host, commands ("orders") arrive
+as the <code>data</code> field of a Firebase push, each order is DES-decrypted with a key
+derived per-message, and the integer command code is dispatched. OTA payload URLs are not
+compiled in at all — they are delivered by the server at runtime, which is why a static
+scan of the APK shows nothing. The strings were obfuscated, not encrypted; once decoded,
+the whole mechanism is recoverable from the firmware alone.</p>
+
+<h3>Capability vs. observation</h3>
+
+<p>It's worth being precise. <strong>Proven on this device</strong> (from the permissions
+and the code I read): a dormant, server-commanded channel over Firebase; the ability to
+install OTA packages silently as system via the <code>RECOVERY</code> permission; and
+persistence that survives reboot and a normal factory reset because it lives in
+<code>/system</code>. <strong>Documented for the family</strong> (Kryptowire/BLU, 2016):
+timed exfiltration of SMS, contacts, call logs, IMEI and location to China. <strong>What
+I did not catch</strong>: this unit mid-exfiltration — the channel was never commanded
+while I was watching. The worst case a mechanism like this enables is total: push any
+payload as system on command, intercept SMS to defeat 2FA, selectively and dormant to
+evade detection.</p>
+
+<h2>5. Why the network capture looked empty</h2>
+
+<p>A pre-root packet capture over a proxy ran for about 70 minutes and saw nothing but
+benign traffic. That's not reassurance — it's the device's blind spots working as
+designed. The firmware forces <strong>Private DNS (DNS-over-TLS) to Google</strong>, so
+name lookups never hit the local resolver; the Firebase command channel is a
+<strong>pinned socket</strong> to Google's messaging servers that ignores a proxy; and
+system apps ignore any user-installed CA. Seeing the real traffic requires decrypting at
+the system-store level, which only becomes possible after root.</p>
+
+<h2>6. Unlock, root, and neutralizing it</h2>
+
+<p>Because the BootROM was unprotected, the bootloader could be unlocked without a wipe,
+and a root image inspected and reflashed from the forensic backup. (I'm omitting the exact
+commands here.) With root I could read the Adups app's private data, install a system-store
+CA via a systemless module to decrypt its TLS, and — the point of the exercise —
+<strong>neutralize it</strong>: the backdoor was killed and uninstalled for all users, and
+a systemless module blanks its <code>/system</code> stub so it can't respawn. A 22-package
+debloat followed (RuStore, a cleartext privacy tracker beaconing to <code>heils.cn</code>,
+a Verizon SIM-unlock shim, assorted MediaTek MDM and auto-start components). Of the other
+suspicious apps, none was a second backdoor: the "PC mode" launcher's scary permissions
+turned out to be over-declared and unused, and its "self-destruct" service is just a
+fail-open license check.</p>
+
+<h2>7. How far it can be rehabilitated</h2>
+
+<p>The system CA store is clean — 138 stock AOSP roots, no injected MITM cert, which means
+the TLS interception potential lives entirely in the app layer, not the trust store. The
+hard ceiling is the 2016 SoC and its 3.18 kernel: a device-specific LineageOS build
+(Android 10–12) is realistic from the matching kernel sources, but "latest Android" is not
+— it would need these closed MediaTek drivers ported to a far newer kernel that nobody
+ships. A treble GSI is the practical path to a clean, current-ish userspace.</p>
+
+<h2>8. Where this lands legally</h2>
+
+<p><em>Not legal advice.</em> There are two distinct wrongs here, and the cleaner one
+isn't the spyware. The <strong>spec fraud</strong> — Android 10 sold as 15, a tablet sold
+as a phone, fabricated RAM and storage figures, a faked-forward security-patch date — is
+a straightforward deceptive-trade-practices claim (in Colorado, the Consumer Protection
+Act, with a private right of action) that needs no proof of data theft at all. The
+<strong>backdoor</strong> is the harder claim: capability and a named C2 host are provable,
+but actual interception of this user's data is not, which is exactly the standing hurdle
+privacy claims run into.</p>
+
+<p>The closest precedent is <em>FTC v. BLU Products</em> (2018) — the same
+<code>com.adups.fota</code> component, collecting messages and location without consent,
+settled under the FTC Act. Temu's parent has already been sued by the Arkansas AG (2024)
+on deceptive-practices and data-harvesting theories; persuasive, not binding elsewhere,
+and aimed at the app rather than hardware like this. The practical routes for a device
+like this are regulator complaints (a state AG, the FTC, IC3) with the teardown as the
+evidence package — and, more valuably than any $50 refund, publishing the analysis.</p>
+
+<h3>Prior art</h3>
+<ul>
+  <li><strong>Kryptowire, 2016</strong> — the original <code>com.adups.fota</code> disclosure (BLU R1 HD and others). CVE-2016-10136 through -10139 cover the older companion component, not this exact v5.28 variant.</li>
+  <li><strong>DEF CON 26 (2018)</strong> and <strong>DEF CON 31 (2023)</strong> — Kryptowire's two "Vulnerable Out of the Box" talks on preinstalled-app vulnerabilities in cheap carrier/prepaid devices, the category this fake falls into.</li>
+  <li>Gamba et al., <em>"An Analysis of Pre-installed Android Software"</em> (IEEE S&amp;P 2020).</li>
+</ul>
+
+<p>On the CVE question: the backdoor, the silent-OTA channel and the spec fraud are all
+<em>intentional functionality</em>, which MITRE won't assign a CVE for. The only genuine
+new vulnerability I found in v5.28 is a low-severity exported content provider (CWE-862)
+that lets any app flip two status flags — a footnote next to everything else.</p>

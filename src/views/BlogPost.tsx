@@ -4,9 +4,10 @@ import { FlexArticle } from '../lib/posts/flex'
 import { CommaArticle } from '../lib/posts/comma'
 import { TrailsArticle } from '../lib/posts/trails'
 import { PovArticle } from '../lib/posts/pov'
+import { TemuArticle } from '../lib/posts/temu'
 import { AppLink } from '../components/AppLink'
 
-const ARTICLES = { 1: FlexArticle, 2: CommaArticle, 3: TrailsArticle, 4: PovArticle }
+const ARTICLES = { 1: FlexArticle, 2: CommaArticle, 3: TrailsArticle, 4: PovArticle, 5: TemuArticle }
 
 export function BlogPost() {
   const activePost = useSite((s) => s.activePost)

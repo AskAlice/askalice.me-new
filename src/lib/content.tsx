@@ -113,6 +113,18 @@ export interface Post {
 
 export const POSTS: Post[] = [
   {
+    id: 5,
+    slug: 'counterfeit-x26-ultra-teardown',
+    published: '2026-10-08',
+    meta: '2026 · teardown',
+    indexMeta: '2026 · teardown · android, security, firmware',
+    homeMeta: '2026 · teardown',
+    title: 'A $50 "Android 15 flagship" that was a 2019 tablet with a backdoor',
+    excerpt: 'Spoofed specs, a faked patch date, and a firmware-level Adups C2 I recovered from the DEX.',
+    indexExcerpt:
+      'A counterfeit "X26 Ultra": Android 10 sold as 15, a tablet sold as a phone, and a preinstalled Adups backdoor whose C2 was hidden in char[] arrays. Teardown, mechanism, and the consumer-law angle.',
+  },
+  {
     id: 4,
     slug: 'pov-poi-design-spec',
     published: '2026-10-08',
