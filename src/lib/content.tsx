@@ -435,7 +435,7 @@ export const GITHUB_CARDS = [
     desc: 'A "workbench for developers" — tooling & dotfiles for comma.ai\'s open-source self-driving stack.',
     lang: 'Shell',
     langColor: '#ffd47e',
-    href: 'https://github.com/AskAlice/oh-my-comma',
+    href: 'https://github.com/emu-sh/.oh-my-comma', // canonical home, as linked in the oh-my-comma post
   },
   {
     name: 'yksofttoken',

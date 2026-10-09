@@ -26,7 +26,7 @@ const ITEMS: { name: string; note: string; tag: string; logo: ReactNode; tint: s
   {
     name: 'FL Studio',
     note: 'Music production',
-    tag: 'Image-Line',
+    tag: 'my DAW',
     logo: <FLStudioLogo className="w-34px h-34px" />,
     tint: 'rgba(255,212,126,0.10)',
   },

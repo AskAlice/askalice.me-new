@@ -38,7 +38,11 @@ export default defineConfig({
       '/api/suggest': {
         target: 'https://search.emu.sh',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/suggest/, '/suggest'),
+        // mirror api/suggest.ts: forward only q (never useApiKeys or other params)
+        rewrite: (path) => {
+          const q = new URL(path, 'http://dev.local').searchParams.get('q') ?? ''
+          return `/suggest?type=json&client=chrome-omni&q=${encodeURIComponent(q.slice(0, 200))}`
+        },
       },
     },
   },

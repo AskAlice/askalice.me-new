@@ -25,7 +25,8 @@ export function PcbSlideshow() {
   const [view, setView] = useState<'turntable' | 'render'>('turntable')
   const [playing, setPlaying] = useState(() => !matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [hold, setHold] = useState(false) // hovered or focused
-  const [loaded, setLoaded] = useState(false)
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
   const n = PCB_BOARDS.length
@@ -33,7 +34,8 @@ export function PcbSlideshow() {
   const media = pcbMedia(board)
   const src = view === 'turntable' && media.turntable ? media.turntable : media.render
 
-  useEffect(() => setLoaded(false), [src])
+  const loaded = loadedSrc === src // derived, so a cached image can't race a reset
+  const failed = failedSrc === src
 
   // neighbours only, in the current view
   useEffect(() => {
@@ -57,7 +59,7 @@ export function PcbSlideshow() {
   }
 
   const btn = 'w-36px h-36px flex items-center justify-center rounded-10px bg-white/6 border border-white/12 text-body hover:text-bright'
-  const seg = (on: boolean) => `px-11px py-6px rounded-8px font-mono text-11.5px ${on ? 'bg-white/14 text-bright' : 'text-muted hover:text-bright'}`
+  const seg = (on: boolean) => `px-11px py-6px rounded-8px font-mono text-11.5px whitespace-nowrap ${on ? 'bg-white/14 text-bright' : 'text-muted hover:text-bright'}`
 
   return (
     <div
@@ -103,8 +105,8 @@ export function PcbSlideshow() {
       <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] max-lg:grid-cols-1">
         <div className="relative min-h-320px flex items-center justify-center p-20px bg-[#0b0910] [background-image:radial-gradient(rgba(143,201,245,0.08)_1px,transparent_1px)] [background-size:20px_20px] border-r border-white/8 max-lg:border-r-0 max-lg:border-b">
           {!loaded && (
-            <span className="absolute font-mono text-11.5px text-faint" aria-hidden="true">
-              loading {view === 'turntable' && media.turntable ? 'turntable' : 'render'}…
+            <span className="absolute font-mono text-11.5px text-faint" aria-hidden={!failed}>
+              {failed ? 'image failed to load' : `loading ${view === 'turntable' && media.turntable ? 'turntable' : 'render'}…`}
             </span>
           )}
           <img
@@ -114,7 +116,8 @@ export function PcbSlideshow() {
             width={view === 'turntable' && media.turntable ? 784 : 1376}
             height={view === 'turntable' && media.turntable ? 480 : 872}
             decoding="async"
-            onLoad={() => setLoaded(true)}
+            onLoad={() => setLoadedSrc(src)}
+            onError={() => setFailedSrc(src)}
             className={`relative max-h-380px w-auto max-w-full h-auto object-contain transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           />
           {view === 'turntable' && !media.turntable && (
@@ -122,7 +125,8 @@ export function PcbSlideshow() {
           )}
         </div>
 
-        <div aria-live="polite" className="p-24px flex flex-col">
+        {/* WAI-ARIA carousel: don't announce slides while they rotate on their own */}
+        <div aria-live={playing && !hold ? 'off' : 'polite'} className="p-24px flex flex-col">
           <div className="font-mono text-11px text-mint mb-8px">{board.status}</div>
           <h3 className="text-24px font-600 m-0 tracking-[-0.01em]">{board.name}</h3>
           <p className="text-pink text-15px mt-4px mb-14px">{board.role}</p>

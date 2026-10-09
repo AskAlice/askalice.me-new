@@ -42,12 +42,14 @@ export function OmniboxDemo() {
   const [state, setState] = useState<State>({ s: 'idle' })
   const [active, setActive] = useState(-1)
   const [nonce, setNonce] = useState(0) // bump to retry
+  const [dismissed, setDismissed] = useState(false) // Escape hides the list until the next keystroke
   const listId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const query = q.trim()
     setActive(-1)
+    setDismissed(false)
     if (!query) {
       setState({ s: 'idle' })
       return
@@ -58,6 +60,7 @@ export function OmniboxDemo() {
       try {
         const res = await fetch(suggestEndpoint(query), { signal: ctrl.signal, headers: { accept: 'application/json' } })
         const body: unknown = await res.json().catch(() => null)
+        if (ctrl.signal.aborted) return // a newer query superseded this one mid-body
         if (!res.ok) {
           const msg = body && typeof body === 'object' && 'error' in body ? String((body as { error: unknown }).error) : `HTTP ${res.status}`
           setState({ s: 'error', msg })
@@ -75,7 +78,7 @@ export function OmniboxDemo() {
     }
   }, [q, nonce])
 
-  const rows = state.s === 'ok' ? state.rows : []
+  const rows = state.s === 'ok' && !dismissed ? state.rows : []
   const pick = (r: Suggestion) => openExternal(r.href ?? searchUrl(r.text))
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -92,6 +95,7 @@ export function OmniboxDemo() {
       else openExternal(searchUrl(q))
     } else if (e.key === 'Escape') {
       setActive(-1)
+      setDismissed(true)
     }
   }
 
@@ -118,7 +122,7 @@ export function OmniboxDemo() {
             onKeyDown={onKey}
             role="combobox"
             aria-expanded={rows.length > 0}
-            aria-controls={listId}
+            aria-controls={rows.length > 0 ? listId : undefined}
             aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
             aria-autocomplete="list"
             aria-label="Try the search.emu.sh omnibox"
@@ -147,7 +151,10 @@ export function OmniboxDemo() {
 
         {q.trim() && <div className="font-mono text-11.5px text-sky mt-14px">→ {kindLabel(kind)}</div>}
 
-        <div className="mt-10px min-h-120px" aria-live="polite">
+        <span className="sr-only" role="status">
+          {state.s === 'ok' ? `${state.rows.length} suggestion${state.rows.length === 1 ? '' : 's'}` : state.s === 'error' ? 'search.emu.sh unreachable' : ''}
+        </span>
+        <div className="mt-10px min-h-120px">
           {state.s === 'idle' && (
             <p className="text-muted text-14px m-0 mt-14px">
               Suggestions come from the real engine. Enter opens its search, which follows the same bang and routing rules.

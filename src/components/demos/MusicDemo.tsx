@@ -52,15 +52,28 @@ export default function MusicDemo() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pendingSeek = useRef(0)
   const dragging = useRef(false)
+  const mounted = useRef(true)
+  const setupRef = useRef<Promise<HTMLAudioElement | null> | null>(null)
+  const probeRef = useRef<Promise<boolean> | null>(null)
+  const gradRef = useRef<{ h: number; g: CanvasGradient } | null>(null)
 
   const duration = DATA.duration
   const current = sliceAt(DATA.slices, hoverT ?? time)
 
-  /** Create the audio element (+ Web Audio graph when CORS allows) on first use. */
-  const ensureAudio = async (): Promise<HTMLAudioElement> => {
-    if (audioRef.current) return audioRef.current
+  /**
+   * Create the audio element (+ Web Audio graph when CORS allows) once. Concurrent
+   * callers share one in-flight promise; returns null if the page unmounted mid-setup.
+   */
+  const ensureAudio = (): Promise<HTMLAudioElement | null> => {
+    if (audioRef.current) return Promise.resolve(audioRef.current)
+    setupRef.current ??= setupAudio()
+    return setupRef.current
+  }
+
+  const setupAudio = async (): Promise<HTMLAudioElement | null> => {
     setLive('probing')
-    const readable = await corsReadable(DATA.audioUrl)
+    const readable = await (probeRef.current ?? corsReadable(DATA.audioUrl))
+    if (!mounted.current) return null
     const a = new Audio()
     a.preload = 'auto'
     if (readable) a.crossOrigin = 'anonymous'
@@ -91,6 +104,7 @@ export default function MusicDemo() {
     setErr('')
     try {
       const a = await ensureAudio()
+      if (!a || !mounted.current) return
       if (a.paused) {
         await ctxRef.current?.resume()
         await a.play()
@@ -107,8 +121,10 @@ export default function MusicDemo() {
     setTime(c)
   }
 
-  // rAF: playhead position + live spectrum, straight to the DOM
+  // rAF while playing: playhead position + live spectrum, straight to the DOM.
+  // When paused, the playhead's left comes from the `time` state in render.
   useEffect(() => {
+    if (!playing) return
     let raf = 0
     const bins = new Uint8Array(1024)
     const draw = () => {
@@ -125,11 +141,14 @@ export default function MusicDemo() {
           const w = cv.width
           const h = cv.height
           g.clearRect(0, 0, w, h)
-          const grad = g.createLinearGradient(0, h, 0, 0)
-          grad.addColorStop(0, '#b3a4f7')
-          grad.addColorStop(0.55, '#f5708a')
-          grad.addColorStop(1, '#ffd47e')
-          g.fillStyle = grad
+          if (gradRef.current?.h !== h) {
+            const grad = g.createLinearGradient(0, h, 0, 0)
+            grad.addColorStop(0, '#b3a4f7')
+            grad.addColorStop(0.55, '#f5708a')
+            grad.addColorStop(1, '#ffd47e')
+            gradRef.current = { h, g: grad }
+          }
+          g.fillStyle = gradRef.current.g
           const bw = w / BANDS
           bands.forEach((v, i) => {
             const bh = Math.max(2, v * h)
@@ -141,7 +160,7 @@ export default function MusicDemo() {
     }
     raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
-  }, [duration])
+  }, [duration, playing])
 
   // size the canvas backing store to its CSS box
   useEffect(() => {
@@ -156,20 +175,42 @@ export default function MusicDemo() {
     return () => ro.disconnect()
   }, [live])
 
-  // tear down audio on leave
-  useEffect(
-    () => () => {
-      audioRef.current?.pause()
+  // Probe CORS when the browser is idle, so the click → play() gap stays short
+  // (Safari drops the user gesture across a slow await).
+  useEffect(() => {
+    const start = () => {
+      probeRef.current ??= corsReadable(DATA.audioUrl)
+    }
+    const hasIdle = typeof window.requestIdleCallback === 'function' // missing in older Safari
+    const id = hasIdle ? window.requestIdleCallback(start, { timeout: 2000 }) : window.setTimeout(start, 600)
+    return () => (hasIdle ? window.cancelIdleCallback(id) : window.clearTimeout(id))
+  }, [])
+
+  // tear down on leave: stop the download as well as playback, release the context
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      const a = audioRef.current
+      if (a) {
+        a.pause()
+        a.removeAttribute('src')
+        a.load()
+      }
       void ctxRef.current?.close()
-    },
-    [],
-  )
+      audioRef.current = null
+      ctxRef.current = null
+      analyserRef.current = null
+      setupRef.current = null
+    }
+  }, [])
 
   const tAt = (e: PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
     return fractionAt(e.clientX - r.left, r.width) * duration
   }
   const onDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return // primary button / touch / pen only
     dragging.current = true
     e.currentTarget.setPointerCapture(e.pointerId)
     seek(tAt(e))
@@ -179,7 +220,7 @@ export default function MusicDemo() {
     setHoverT(t)
     if (dragging.current) seek(t)
   }
-  const onUp = () => {
+  const endDrag = () => {
     dragging.current = false
   }
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -240,13 +281,15 @@ export default function MusicDemo() {
           aria-valuetext={`${formatTime(time)} of ${formatTime(duration)}`}
           onPointerDown={onDown}
           onPointerMove={onMove}
-          onPointerUp={onUp}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onLostPointerCapture={endDrag}
           onPointerLeave={() => setHoverT(null)}
           onKeyDown={onKey}
-          className="relative h-[clamp(140px,22vw,210px)] rounded-12px overflow-hidden border border-white/12 bg-black cursor-crosshair select-none touch-none outline-none focus-visible:border-flamingo/70"
+          className="relative h-[clamp(140px,22vw,210px)] rounded-12px overflow-hidden border border-white/12 bg-black cursor-crosshair select-none touch-pan-y outline-none focus-visible:border-flamingo/70"
         >
           <img src={SPECTROGRAM} alt="Spectrogram of I Promise" width={2400} height={320} draggable={false} className="absolute inset-0 w-full h-full object-fill pointer-events-none opacity-90" />
-          <div ref={playheadRef} className="absolute top-0 bottom-0 w-2px -ml-1px bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] pointer-events-none" style={{ left: '0%' }} />
+          <div ref={playheadRef} className="absolute top-0 bottom-0 w-2px -ml-1px bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] pointer-events-none" style={{ left: `${(time / duration) * 100}%` }} />
           {hoverT !== null && current && (
             <div
               className="absolute top-8px -translate-x-1/2 bg-black/85 border border-white/15 rounded-8px px-8px py-4px font-mono text-10.5px text-bright whitespace-nowrap pointer-events-none"
