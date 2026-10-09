@@ -18,6 +18,13 @@ a { color: inherit; text-decoration: none; }
 @keyframes spinSlow { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 @keyframes scan { from { transform: translateY(-120%); } to { transform: translateY(120%); } }
 
+/* StatsBar count-up: digits are generated content, so DOM text stays the real value */
+@property --n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+.count { --n: var(--target); counter-reset: n var(--n); }
+.count::after { content: counter(n); }
+.count[data-phase='armed'] { --n: 0; }
+.count[data-phase='run'] { transition: --n 1.3s cubic-bezier(0.33, 1, 0.68, 1); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }

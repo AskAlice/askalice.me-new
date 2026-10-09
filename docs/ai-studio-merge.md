@@ -92,10 +92,13 @@ The zip itself stays untracked. Nothing in either branch reads from it.
   panel that scrolls in landscape. Escape closes it and returns focus to the
   button. `aria-current` is `location` for scroll-spied sections, `page` for
   the current page, and `true` for an ancestor (Writing while on a post).
-- **StatsBar**: the four numbers restate `ROLES`. The final values render
-  first, and only a strip that mounts below the fold animates. Crawlers and
-  reduced-motion users always get the real figures. It is hidden in the
-  `VITE_EMU_LLC` variant, which has no Experience section.
+- **StatsBar**: the four numbers restate `ROLES`. The count-up is pure CSS:
+  the digits are `::after` generated content driven by an animatable `--n`.
+  JS only flips `data-phase`. Because the DOM text never holds an in-between
+  value, crawlers and screen readers read the real figure from the sr-only
+  line. A strip that's already on screen (or skipped via a deep link) shows
+  the final values. It is hidden in the `VITE_EMU_LLC` variant, which has no
+  Experience section.
 - **Fixes found on the way**: the hero copy had no side gutter on phones, and
   the editor was unusable on phones.
 
@@ -122,7 +125,7 @@ The zip itself stays untracked. Nothing in either branch reads from it.
 
 | Check | main | A | B |
 | --- | --- | --- | --- |
-| `npm test` | — | 12 / 12 | 53 / 53 |
+| `npm test` | — | 7 / 7 | 48 / 48 |
 | `tsc -b` | ✓ | ✓ | ✓ |
 | JS shipped (gzip) | 128 KB + 233 KB lazy three.js | 131 KB | 133 KB |
 | Horizontal overflow at 390 px | yes (nav) | none | none |

@@ -1,46 +1,52 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { STATS } from '../lib/content'
-import { countAt } from '../lib/countUp'
 
-const DURATION_MS = 1300
+type Phase = 'idle' | 'armed' | 'run'
 
 /**
- * Animates 0 → target once the element first scrolls into view. Renders the
- * final value until then, so crawlers, no-JS snapshots and reduced-motion
- * users always get the real number; only below-the-fold mounts animate.
+ * Count-up drawn entirely by CSS (see `.count` in styles.css): the digits are
+ * a ::after counter driven by an animatable `--n`, so the DOM text never holds
+ * an intermediate value — crawlers and screen readers read the real figure from
+ * the sr-only line. JS only flips a data attribute:
+ *   idle  → shows the target (default; also for reduced motion)
+ *   armed → drops to 0 while the strip is still within one screen below the viewport
+ *   run   → transitions 0 → target once 40% visible
  */
 function CountUp({ target }: { target: number }) {
   const ref = useRef<HTMLSpanElement>(null)
-  const [n, setN] = useState(target)
+  const [phase, setPhase] = useState<Phase>('idle')
   useEffect(() => {
     const el = ref.current
     if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    if (el.getBoundingClientRect().top < window.innerHeight) return // already visible: don't flash a reset
-    let raf = 0
-    setN(0)
-    const io = new IntersectionObserver(([e]) => {
-      if (!e?.isIntersecting) return
-      io.disconnect()
-      const t0 = performance.now()
-      const tick = (now: number) => {
-        const t = (now - t0) / DURATION_MS
-        setN(countAt(target, t))
-        if (t < 1) raf = requestAnimationFrame(tick)
-      }
-      raf = requestAnimationFrame(tick)
-    }, { threshold: 0.4 })
-    io.observe(el)
+    let armed = false
+    const arm = new IntersectionObserver(
+      ([e]) => {
+        if (!e?.isIntersecting) return
+        arm.disconnect()
+        if (e.boundingClientRect.top >= window.innerHeight) {
+          armed = true // still off-screen below: reset without a visible flash
+          setPhase('armed')
+        }
+      },
+      { rootMargin: '0px 0px 100% 0px' },
+    )
+    const play = new IntersectionObserver(
+      ([e]) => {
+        if (!e?.isIntersecting || !armed) return
+        play.disconnect()
+        // next frame, so the browser has painted 0 before the transition starts
+        requestAnimationFrame(() => setPhase('run'))
+      },
+      { threshold: 0.4 },
+    )
+    arm.observe(el)
+    play.observe(el)
     return () => {
-      io.disconnect()
-      cancelAnimationFrame(raf)
-      setN(target)
+      arm.disconnect()
+      play.disconnect()
     }
-  }, [target])
-  return (
-    <span ref={ref} className="tabular-nums">
-      {n}
-    </span>
-  )
+  }, [])
+  return <span ref={ref} className="count tabular-nums" data-phase={phase} style={{ '--target': target } as CSSProperties} />
 }
 
 /** "At a glance" strip between the hero and About — numbers lifted from the experience section. */
