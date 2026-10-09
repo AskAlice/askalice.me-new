@@ -350,9 +350,9 @@ export const DEMOS: Record<
   },
   music: {
     title: 'I Promise — spectrogram',
-    desc: 'My track “I Promise” as a scrubbable spectrogram: click to seek, a live Web Audio spectrum while it plays, and the dominant pitch and first eight partials at the playhead.',
+    desc: 'My track “I Promise” (FL Studio, 2021) as a scrubbable spectrogram: click to seek, a live Web Audio spectrum while it plays, and the dominant pitch and first eight partials at the playhead, all computed from the MP3.',
     tech: 'Web Audio · Canvas · FL Studio',
-    live: 'https://emu.bz/i-promise.mp3',
+    live: '/media/music/i-promise.mp3',
     preview: '/media/music/i-promise-spectrogram.webp',
   },
   pcbs: {
@@ -380,7 +380,7 @@ export const DEMOS: Record<
 export const TRACK = {
   name: 'I Promise',
   durationSec: 207.38,
-  audioUrl: 'https://emu.bz/i-promise.mp3',
+  audioUrl: '/media/music/i-promise.mp3', // self-hosted copy of emu.bz/i-promise.mp3 (same file Alice owns)
   image: '/media/music/i-promise-spectrogram.webp',
 }
 

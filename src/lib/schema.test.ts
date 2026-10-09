@@ -22,13 +22,15 @@ describe('personLd', () => {
 
 describe('offerCatalogLd', () => {
   const c = offerCatalogLd()
-  it('has one Offer → Service per Services card, provided by the Person', () => {
+  it('has one Offer → Service per Services card, provided by Emu LLC (defined in the home graph)', () => {
+    const emu = homeGraph()['@graph'].find((n) => n['@type'] === 'Organization')
+    expect(emu).toMatchObject({ '@id': 'https://askalice.me/#emu-llc', name: 'Emu LLC' })
     expect(c.itemListElement).toHaveLength(SERVICES.length)
     for (const [i, o] of c.itemListElement.entries()) {
       expect(o['@type']).toBe('Offer')
       expect(o.itemOffered['@type']).toBe('Service')
       expect(o.itemOffered.name).toBe(SERVICES[i]!.title)
-      expect(o.itemOffered.provider).toEqual({ '@id': 'https://askalice.me/#person' })
+      expect(o.itemOffered.provider).toEqual({ '@id': 'https://askalice.me/#emu-llc' })
     }
   })
   it('gives every service a unique fragment id', () => {
@@ -38,8 +40,8 @@ describe('offerCatalogLd', () => {
 })
 
 describe('homeGraph', () => {
-  it('contains Person, WebSite and ProfilePage', () => {
-    expect(homeGraph()['@graph'].map((n) => n['@type'])).toEqual(['Person', 'WebSite', 'ProfilePage'])
+  it('contains Person, Emu LLC, WebSite and ProfilePage', () => {
+    expect(homeGraph()['@graph'].map((n) => n['@type'])).toEqual(['Person', 'Organization', 'WebSite', 'ProfilePage'])
   })
 })
 
@@ -67,7 +69,7 @@ describe('musicRecordingLd', () => {
     expect(m['@type']).toBe('MusicRecording')
     expect(m.duration).toBe('PT3M27S')
     expect(m.byArtist['@id']).toBe('https://askalice.me/#person')
-    expect(m.audio).toMatchObject({ '@type': 'AudioObject', encodingFormat: 'audio/mpeg' })
+    expect(m.audio).toMatchObject({ '@type': 'AudioObject', encodingFormat: 'audio/mpeg', contentUrl: 'https://askalice.me/media/music/i-promise.mp3' })
   })
   it('formats ISO 8601 durations', () => {
     expect(isoDuration(0)).toBe('PT0M0S')

@@ -132,11 +132,12 @@ live. In production, `api/suggest.ts` does the same job as a Vercel function.
 - **Music, `/demos/music`** (`MusicDemo.tsx`, its own lazy chunk):
   - The spectrogram scrubs on click, drag and arrow keys (ARIA slider).
   - Hovering shows the pitch, level and partials at that moment.
-  - Audio is only created on the first Play. The draft downloaded the MP3 on every page load.
-  - The draft's spectrum was generated from `sin()` beats plus pink noise. It is replaced by a real Web Audio `AnalyserNode`.
-  - The analyser only works if emu.bz sends CORS headers. The page checks first. If the headers aren't there, the track still plays and the panel says why the spectrum is off.
-  - The draft's 128-slice analysis was kept after checking it: its loudness correlates r≈0.90 with the spectrogram's brightness (≈0 when shuffled), and every note name matches its frequency.
-  - The draft's BPM, key and "arrangement sections" were dropped because nothing backs them.
+  - The MP3 is self-hosted at `public/media/music/i-promise.mp3`. It's your copy of the emu.bz file, 320 kbps, 8.3 MB.
+  - Because the MP3 is same-origin, the Web Audio `AnalyserNode` spectrum always works. The draft's spectrum was generated from `sin()` beats plus pink noise.
+  - The MP3 preloads (`preload="auto"`) as soon as the page mounts, with a progress readout. Hovering the home-page card prefetches the player chunk.
+  - **Precomputed pitch data.** `scripts/analyze-track.py` decodes the MP3 and writes `src/lib/music/i-promise.json` plus the spectrogram WebP. It produces 830 slices, one every 0.25 s, each with level, dominant pitch (harmonic product spectrum), note and partials H1–H8. The method is documented in the script; re-run it if the track changes.
+  - The draft's own numbers were checked against the real audio. Its loudness matched (r≈0.93), but none of its pitch values did, so all of its data was replaced.
+  - BPM (115), year (2021) and "FL Studio 20" are read from the MP3's ID3 tags. The draft's "F# minor" and its arrangement sections stay out.
   - The page carries `MusicRecording` schema.org markup.
 - **PCB slideshow, `/demos/pcbs`** (`PcbSlideshow.tsx`, data in `lib/pcbBoards.ts`):
   - All 12 boards are included, GaragePilot C6 among them. Turntable or top-render view, prev/next, board chips, arrow keys, and autoplay that pauses on hover or focus and is off for reduced motion.
@@ -144,7 +145,10 @@ live. In production, `api/suggest.ts` does the same job as a Vercel function.
   - Only neighbouring images preload. The draft fetched every GIF, about 20 MB, at page load.
 - **Omnibox, `/demos/search`** (`OmniboxDemo.tsx`, `lib/omnibox.ts`, `api/suggest.ts`):
   - Typing queries the real search.emu.sh `/suggest?type=json` through a same-origin proxy. search.emu.sh sends no CORS headers, so the browser can't call it directly.
-  - The proxy only forwards `q`, never `useApiKeys`, so your paid keys are never used. It limits `q` to 200 characters, times out after 6 s, and only relays JSON.
+  - The proxy always sends `useApiKeys=true` (your call), so crypto prices and LLM routing work.
+  - Only `q` is taken from the caller. It's capped at 200 characters, and anything else the caller sends is ignored.
+  - Per-IP rate limit: 5/s and 100/min.
+  - 60 s edge cache, 6 s timeout, JSON-only relay.
   - Enter opens the real `/search`.
   - The label under the input uses the engine's own dig, IP and bang patterns.
   - The draft's canned answers and its `Function()` math evaluator are gone.
@@ -155,9 +159,9 @@ live. In production, `api/suggest.ts` does the same job as a Vercel function.
 
 | Check | main | A | B | C |
 | --- | --- | --- | --- | --- |
-| `npm test` | — | 7 / 7 | 48 / 48 | 99 / 99 |
+| `npm test` | — | 7 / 7 | 48 / 48 | 105 / 105 |
 | `tsc -b` | ✓ | ✓ | ✓ | ✓ |
-| JS on first load (gzip) | 128 KB + 233 KB lazy three.js | 131 KB | 133 KB | 136 KB (+ 3–8 KB per demo page) |
+| JS on first load (gzip) | 128 KB + 233 KB lazy three.js | 131 KB | 133 KB | 136 KB (+ 3–5 KB per demo page; music page 25 KB incl. pitch data) |
 | Horizontal overflow at 390 px | yes (nav) | none | none | none |
 
 The branches were also driven in headless Chromium:
@@ -175,7 +179,23 @@ The branches were also driven in headless Chromium:
 A separate reviewer agent read both diffs and found no blockers. Its
 should-fix items were applied in follow-up commits.
 
-## Needs your call
+## Decided (Oct 9)
+
+- **Approved:**
+  - the FL Studio / Harmor credit
+  - the Kimi line on the boards
+  - "Twelve boards"
+  - the Section console recording (OK to publish)
+- **Services** name Emu LLC as the contracting company, and schema.org lists Emu LLC as the `provider`.
+- **`useApiKeys=true`**, rate-limited at 5/s and 100/min per IP.
+- **The MP3** is copied into the site.
+
+## Still open
+
+- Your part in the Section traffic map. The caption stays neutral ("Section console, Dec 2020") until you say what you built.
+- The two Sony and Section bullets that came from the draft (below).
+
+## Needs your call (original list)
 
 1. **Claims from the draft that the résumé doesn't support.** These were kept
    in B for you to confirm:
@@ -196,7 +216,7 @@ should-fix items were applied in follow-up commits.
    Two things changed on the site, so they no longer match the résumé PDF:
    - "Eleven boards" became "Twelve" (GaragePilot was added to the repo)
    - yksofttoken is described as your fork of arr2036's tool
-5. **emu.bz CORS.** Without an `Access-Control-Allow-Origin` header the live spectrum stays off. Either add the header on emu.bz, or put the MP3 in `public/media/music/` and point `TRACK.audioUrl` and `i-promise.json` at it.
+5. ~~emu.bz CORS~~: resolved by self-hosting the MP3.
 6. **Draft-only details not ported**: the phone number on the contact card
    and the "Illustration by Paul Westover" credit under the avatar (it sits
    on a Gravatar identicon).

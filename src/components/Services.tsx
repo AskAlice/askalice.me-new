@@ -22,7 +22,7 @@ export function Services() {
             Hire me for a project.
           </h2>
           <p className="text-muted text-17px max-w-560px m-0 leading-[1.55]">
-            Contract and freelance work, based in Arvada, Colorado. Denver metro or remote.
+            Contract and freelance work through <span className="text-bright">Emu LLC</span>, my company. Based in Arvada, Colorado; Denver metro or remote.
           </p>
         </div>
         <a

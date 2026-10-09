@@ -8,6 +8,12 @@ import { SITE } from './routes'
 export const OG_IMG = `${GRAVATAR}?s=512&d=identicon`
 export const HOME_TITLE = 'Alice Knag — pretty things with JavaScript'
 const PERSON_ID = `${SITE}/#person`
+const EMU_ID = `${SITE}/#emu-llc`
+
+/** Emu LLC, Alice's company — the contracting entity for the Services offers. */
+export function emuLlcLd() {
+  return { '@type': 'Organization', '@id': EMU_ID, name: 'Emu LLC', url: `${SITE}/services` }
+}
 
 // From the résumé (ResumeSection / scripts/build-resume.ts), not ROLES.
 const SCHOOLS = ['University of Colorado Boulder', 'University of Arizona']
@@ -30,7 +36,7 @@ export function offerCatalogLd() {
         '@id': `${SITE}/#service-${s.id}`, // matches the card's DOM id
         name: s.title,
         description: s.blurb,
-        provider: { '@id': PERSON_ID },
+        provider: { '@id': EMU_ID },
         areaServed: { '@type': 'AdministrativeArea', name: 'Denver metropolitan area, Colorado' },
       },
     })),
@@ -61,6 +67,7 @@ export function homeGraph() {
     '@context': 'https://schema.org',
     '@graph': [
       personLd(),
+      emuLlcLd(),
       { '@type': 'WebSite', '@id': `${SITE}/#site`, name: 'Alice Knag', url: SITE, publisher: { '@id': PERSON_ID } },
       {
         '@type': 'ProfilePage',
@@ -90,7 +97,7 @@ export function musicRecordingLd(pageUrl: string) {
     duration: isoDuration(TRACK.durationSec),
     byArtist: personRef(),
     image: `${SITE}${TRACK.image}`,
-    audio: { '@type': 'AudioObject', contentUrl: TRACK.audioUrl, encodingFormat: 'audio/mpeg', duration: isoDuration(TRACK.durationSec) },
+    audio: { '@type': 'AudioObject', contentUrl: `${SITE}${TRACK.audioUrl}`, encodingFormat: 'audio/mpeg', duration: isoDuration(TRACK.durationSec) },
   }
 }
 

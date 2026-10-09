@@ -1,111 +1,96 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import analysis from '../../lib/music/i-promise.json'
-import { formatTime, fractionAt, logBands, sliceAt, type TrackAnalysis } from '../../lib/music'
+import { formatTime, fractionAt, freqToY, logBands, sliceAt, type TrackAnalysis } from '../../lib/music'
 import { FLStudioLogo } from '../Logos'
 import { PauseIcon, PlayIcon, RestartIcon } from '../icons'
 
 const DATA = analysis as TrackAnalysis
 const SPECTROGRAM = '/media/music/i-promise-spectrogram.webp'
 const BANDS = 32
-
-/** 'probing' while we check CORS on first play; 'on' = real AnalyserNode; 'off' = audio only. */
-type Live = 'idle' | 'probing' | 'on' | 'off'
-
-/**
- * Can the browser read samples from `url`? Media from another origin only
- * reaches an AnalyserNode when the host sends CORS headers; otherwise Web
- * Audio outputs silence. A CORS-mode request answers that without guessing.
- */
-async function corsReadable(url: string): Promise<boolean> {
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 4000)
-  try {
-    const res = await fetch(url, { mode: 'cors', signal: ctrl.signal })
-    ctrl.abort() // headers are enough; don't download the track twice
-    return res.ok
-  } catch {
-    return false
-  } finally {
-    clearTimeout(timer)
-  }
-}
+const TICKS = [100, 1000, 10000] // Hz, labelled on the spectrogram's log axis
 
 /**
  * "I Promise" — Alice's track, as a scrubbable spectrogram with a live
  * spectrum (AI Studio draft's HarmorMusicVisualization, rebuilt).
- * Audio is created on the first Play click (the draft downloaded the MP3 on
- * every page load). The playhead and spectrum are drawn in a rAF loop that
- * writes to the DOM/canvas directly instead of re-rendering React at 60 fps.
+ *
+ * The MP3 is served from this site, so it's same-origin: the Web Audio
+ * AnalyserNode always gets real samples. The audio element is created with
+ * preload="auto" as soon as the page mounts, so playback starts instantly;
+ * the pitch/level/partials data is precomputed from the same MP3 by
+ * scripts/analyze-track.py and ships in this lazy chunk. The playhead and
+ * spectrum are drawn in a rAF loop that writes to the DOM/canvas directly
+ * (only while playing) instead of re-rendering React at 60 fps.
  */
 export default function MusicDemo() {
   const [playing, setPlaying] = useState(false)
-  const [time, setTime] = useState(0) // updated ~4×/s for text and partials
+  const [time, setTime] = useState(0) // ~4×/s from timeupdate: text, partials, paused playhead
   const [hoverT, setHoverT] = useState<number | null>(null)
-  const [live, setLive] = useState<Live>('idle')
+  const [buffered, setBuffered] = useState(0) // 0–1 of the track downloaded
   const [err, setErr] = useState('')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const ctxRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
-  const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const pendingSeek = useRef(0)
-  const dragging = useRef(false)
-  const mounted = useRef(true)
-  const setupRef = useRef<Promise<HTMLAudioElement | null> | null>(null)
-  const probeRef = useRef<Promise<boolean> | null>(null)
   const gradRef = useRef<{ h: number; g: CanvasGradient } | null>(null)
+  const dragging = useRef(false)
 
   const duration = DATA.duration
   const current = sliceAt(DATA.slices, hoverT ?? time)
 
-  /**
-   * Create the audio element (+ Web Audio graph when CORS allows) once. Concurrent
-   * callers share one in-flight promise; returns null if the page unmounted mid-setup.
-   */
-  const ensureAudio = (): Promise<HTMLAudioElement | null> => {
-    if (audioRef.current) return Promise.resolve(audioRef.current)
-    setupRef.current ??= setupAudio()
-    return setupRef.current
-  }
-
-  const setupAudio = async (): Promise<HTMLAudioElement | null> => {
-    setLive('probing')
-    const readable = await (probeRef.current ?? corsReadable(DATA.audioUrl))
-    if (!mounted.current) return null
+  // Preload: start downloading the MP3 the moment the page mounts.
+  useEffect(() => {
     const a = new Audio()
     a.preload = 'auto'
-    if (readable) a.crossOrigin = 'anonymous'
     a.src = DATA.audioUrl
-    a.addEventListener('loadedmetadata', () => (a.currentTime = pendingSeek.current), { once: true })
-    a.addEventListener('play', () => setPlaying(true))
-    a.addEventListener('pause', () => setPlaying(false))
-    a.addEventListener('ended', () => setPlaying(false))
-    a.addEventListener('timeupdate', () => setTime(a.currentTime))
-    a.addEventListener('error', () => setErr('Couldn’t load the track from emu.bz.'))
-    audioRef.current = a
-    if (readable) {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      const ctx = new Ctx()
-      const an = ctx.createAnalyser()
-      an.fftSize = 2048
-      an.smoothingTimeConstant = 0.78
-      ctx.createMediaElementSource(a).connect(an)
-      an.connect(ctx.destination)
-      ctxRef.current = ctx
-      analyserRef.current = an
+    const onProgress = () => {
+      if (a.buffered.length && a.duration) setBuffered(a.buffered.end(a.buffered.length - 1) / a.duration)
     }
-    setLive(readable ? 'on' : 'off')
-    return a
+    const handlers: [string, () => void][] = [
+      ['play', () => setPlaying(true)],
+      ['pause', () => setPlaying(false)],
+      ['ended', () => setPlaying(false)],
+      ['timeupdate', () => setTime(a.currentTime)],
+      ['progress', onProgress],
+      ['canplaythrough', onProgress],
+      ['error', () => setErr('Couldn’t load the track.')],
+    ]
+    for (const [ev, fn] of handlers) a.addEventListener(ev, fn)
+    audioRef.current = a
+    return () => {
+      for (const [ev, fn] of handlers) a.removeEventListener(ev, fn)
+      a.pause()
+      a.removeAttribute('src')
+      a.load() // abort the download
+      void ctxRef.current?.close()
+      audioRef.current = null
+      ctxRef.current = null
+      analyserRef.current = null
+    }
+  }, [])
+
+  /** Build the Web Audio graph once, inside the first user gesture (autoplay policy). */
+  const ensureGraph = (a: HTMLAudioElement) => {
+    if (ctxRef.current) return
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new Ctx()
+    const an = ctx.createAnalyser()
+    an.fftSize = 2048
+    an.smoothingTimeConstant = 0.78
+    ctx.createMediaElementSource(a).connect(an) // once per element, guarded by ctxRef
+    an.connect(ctx.destination)
+    ctxRef.current = ctx
+    analyserRef.current = an
   }
 
   const toggle = async () => {
+    const a = audioRef.current
+    if (!a) return
     setErr('')
     try {
-      const a = await ensureAudio()
-      if (!a || !mounted.current) return
       if (a.paused) {
+        ensureGraph(a)
         await ctxRef.current?.resume()
         await a.play()
       } else a.pause()
@@ -116,45 +101,39 @@ export default function MusicDemo() {
 
   const seek = (t: number) => {
     const c = Math.min(duration, Math.max(0, t))
-    pendingSeek.current = c
     if (audioRef.current) audioRef.current.currentTime = c
     setTime(c)
   }
 
-  // rAF while playing: playhead position + live spectrum, straight to the DOM.
-  // When paused, the playhead's left comes from the `time` state in render.
+  // rAF while playing: playhead + live spectrum, straight to the DOM/canvas
   useEffect(() => {
     if (!playing) return
     let raf = 0
     const bins = new Uint8Array(1024)
     const draw = () => {
       const a = audioRef.current
-      const t = a ? a.currentTime : pendingSeek.current
-      if (playheadRef.current) playheadRef.current.style.left = `${(t / duration) * 100}%`
+      if (a && playheadRef.current) playheadRef.current.style.left = `${(a.currentTime / duration) * 100}%`
       const cv = canvasRef.current
       const an = analyserRef.current
-      if (cv && an) {
+      const g = cv?.getContext('2d')
+      if (cv && an && g) {
         an.getByteFrequencyData(bins)
         const bands = logBands(bins, ctxRef.current?.sampleRate ?? 44100, BANDS)
-        const g = cv.getContext('2d')
-        if (g) {
-          const w = cv.width
-          const h = cv.height
-          g.clearRect(0, 0, w, h)
-          if (gradRef.current?.h !== h) {
-            const grad = g.createLinearGradient(0, h, 0, 0)
-            grad.addColorStop(0, '#b3a4f7')
-            grad.addColorStop(0.55, '#f5708a')
-            grad.addColorStop(1, '#ffd47e')
-            gradRef.current = { h, g: grad }
-          }
-          g.fillStyle = gradRef.current.g
-          const bw = w / BANDS
-          bands.forEach((v, i) => {
-            const bh = Math.max(2, v * h)
-            g.fillRect(i * bw + 1, h - bh, bw - 2, bh)
-          })
+        const { width: w, height: h } = cv
+        g.clearRect(0, 0, w, h)
+        if (gradRef.current?.h !== h) {
+          const grad = g.createLinearGradient(0, h, 0, 0)
+          grad.addColorStop(0, '#b3a4f7')
+          grad.addColorStop(0.55, '#f5708a')
+          grad.addColorStop(1, '#ffd47e')
+          gradRef.current = { h, g: grad }
         }
+        g.fillStyle = gradRef.current.g
+        const bw = w / BANDS
+        bands.forEach((v, i) => {
+          const bh = Math.max(2, v * h)
+          g.fillRect(i * bw + 1, h - bh, bw - 2, bh)
+        })
       }
       raf = requestAnimationFrame(draw)
     }
@@ -173,36 +152,6 @@ export default function MusicDemo() {
     })
     ro.observe(cv)
     return () => ro.disconnect()
-  }, [live])
-
-  // Probe CORS when the browser is idle, so the click → play() gap stays short
-  // (Safari drops the user gesture across a slow await).
-  useEffect(() => {
-    const start = () => {
-      probeRef.current ??= corsReadable(DATA.audioUrl)
-    }
-    const hasIdle = typeof window.requestIdleCallback === 'function' // missing in older Safari
-    const id = hasIdle ? window.requestIdleCallback(start, { timeout: 2000 }) : window.setTimeout(start, 600)
-    return () => (hasIdle ? window.cancelIdleCallback(id) : window.clearTimeout(id))
-  }, [])
-
-  // tear down on leave: stop the download as well as playback, release the context
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-      const a = audioRef.current
-      if (a) {
-        a.pause()
-        a.removeAttribute('src')
-        a.load()
-      }
-      void ctxRef.current?.close()
-      audioRef.current = null
-      ctxRef.current = null
-      analyserRef.current = null
-      setupRef.current = null
-    }
   }, [])
 
   const tAt = (e: PointerEvent<HTMLDivElement>) => {
@@ -233,8 +182,10 @@ export default function MusicDemo() {
     e.preventDefault()
   }
 
-  const hmax = Math.max(...(current?.harmonics ?? [1]), 1e-6)
+  const harmonics = current && current.freq > 0 ? current.harmonics : []
+  const hmax = Math.max(...harmonics, 1e-6)
   const ctl = 'w-38px h-38px flex items-center justify-center rounded-11px border'
+  const meta = [DATA.bpm ? `${DATA.bpm} BPM` : null, DATA.year, DATA.encoder?.replace(/^LAME in /, '')].filter(Boolean).join(' · ')
 
   return (
     <div className="border border-white/12 rounded-18px overflow-hidden bg-[#0e0b14]">
@@ -244,7 +195,10 @@ export default function MusicDemo() {
         </span>
         <div className="min-w-0">
           <div className="text-17px font-600 text-bright">{DATA.track}</div>
-          <div className="font-mono text-11.5px text-faint">{DATA.artist} · original track · {formatTime(duration)}</div>
+          <div className="font-mono text-11.5px text-faint">
+            {DATA.artist} · {formatTime(duration)}
+            {meta && ` · ${meta}`}
+          </div>
         </div>
         <div className="ml-auto flex items-center gap-8px">
           <span className="font-mono text-12px text-body tabular-nums">
@@ -257,8 +211,7 @@ export default function MusicDemo() {
             type="button"
             aria-label={playing ? 'Pause' : 'Play I Promise'}
             onClick={() => void toggle()}
-            disabled={live === 'probing'}
-            className={`${ctl} bg-flamingo border-flamingo text-ink disabled:opacity-60`}
+            className={`${ctl} bg-flamingo border-flamingo text-ink`}
           >
             {playing ? <PauseIcon /> : <PlayIcon />}
           </button>
@@ -267,11 +220,10 @@ export default function MusicDemo() {
 
       <div className="p-18px">
         <div className="flex justify-between font-mono text-10.5px text-faint mb-6px">
-          <span>frequency ↑ (log) · time →</span>
-          <span>click or drag to scrub</span>
+          <span>frequency ↑ (log, {DATA.spectrogram.fMin} Hz – {DATA.spectrogram.fMax / 1000} kHz) · time →</span>
+          <span>{buffered < 0.999 ? `preloading ${Math.round(buffered * 100)}%` : 'click or drag to scrub'}</span>
         </div>
         <div
-          ref={stageRef}
           role="slider"
           tabIndex={0}
           aria-label="Track position"
@@ -289,13 +241,37 @@ export default function MusicDemo() {
           className="relative h-[clamp(140px,22vw,210px)] rounded-12px overflow-hidden border border-white/12 bg-black cursor-crosshair select-none touch-pan-y outline-none focus-visible:border-flamingo/70"
         >
           <img src={SPECTROGRAM} alt="Spectrogram of I Promise" width={2400} height={320} draggable={false} className="absolute inset-0 w-full h-full object-fill pointer-events-none opacity-90" />
-          <div ref={playheadRef} className="absolute top-0 bottom-0 w-2px -ml-1px bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] pointer-events-none" style={{ left: `${(time / duration) * 100}%` }} />
+          {TICKS.map((f) => (
+            <span
+              key={f}
+              aria-hidden="true"
+              className="absolute left-6px font-mono text-9.5px text-white/75 bg-black/55 px-4px rounded-3px pointer-events-none -translate-y-1/2"
+              style={{ top: `${freqToY(f, DATA.spectrogram.fMin, DATA.spectrogram.fMax) * 100}%` }}
+            >
+              {f >= 1000 ? `${f / 1000}k` : f}
+            </span>
+          ))}
+          <div
+            className="absolute bottom-0 left-0 h-2px bg-white/35 pointer-events-none"
+            style={{ width: `${buffered * 100}%` }}
+            aria-hidden="true"
+          />
+          <div
+            ref={playheadRef}
+            className="absolute top-0 bottom-0 w-2px -ml-1px bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] pointer-events-none"
+            style={{ left: `${(time / duration) * 100}%` }}
+          />
           {hoverT !== null && current && (
             <div
               className="absolute top-8px -translate-x-1/2 bg-black/85 border border-white/15 rounded-8px px-8px py-4px font-mono text-10.5px text-bright whitespace-nowrap pointer-events-none"
-              style={{ left: `${Math.min(92, Math.max(8, (hoverT / duration) * 100))}%` }}
+              style={{ left: `${Math.min(90, Math.max(10, (hoverT / duration) * 100))}%` }}
             >
-              {formatTime(hoverT)} · <span className="text-butter">{current.note}</span> {current.freq} Hz · {current.db} dB
+              {formatTime(hoverT)} · {current.freq > 0 ? (
+                <>
+                  <span className="text-butter">{current.note}</span> {current.freq} Hz ·{' '}
+                </>
+              ) : null}
+              {current.db} dB
             </div>
           )}
         </div>
@@ -306,17 +282,9 @@ export default function MusicDemo() {
           <div className="border border-white/8 rounded-12px p-14px bg-black/25">
             <div className="flex justify-between font-mono text-11px mb-8px">
               <span className="text-body">live spectrum</span>
-              <span className="text-faint">
-                {live === 'on' ? 'Web Audio AnalyserNode' : live === 'off' ? 'unavailable' : live === 'probing' ? 'checking…' : 'press play'}
-              </span>
+              <span className="text-faint">{playing ? 'Web Audio AnalyserNode' : 'press play'}</span>
             </div>
-            {live === 'off' ? (
-              <p className="text-13px text-muted leading-[1.5] m-0 h-96px">
-                The track is served from emu.bz without CORS headers, so the browser won’t let this page read its samples. It still plays. Serving the MP3 from askalice.me (or adding <code className="font-mono text-pink">Access-Control-Allow-Origin</code> on emu.bz) turns the live spectrum on.
-              </p>
-            ) : (
-              <canvas ref={canvasRef} aria-hidden="true" className="w-full h-96px block" />
-            )}
+            <canvas ref={canvasRef} aria-hidden="true" className="w-full h-96px block" />
             <div className="flex justify-between font-mono text-10px text-faint mt-4px">
               <span>32 Hz</span>
               <span>500 Hz</span>
@@ -328,33 +296,36 @@ export default function MusicDemo() {
             <div className="flex justify-between font-mono text-11px mb-8px">
               <span className="text-body">partials H1–H8</span>
               <span className="text-faint">
-                {current ? (
+                {current && current.freq > 0 ? (
                   <>
                     <span className="text-butter">{current.note}</span> · {current.freq} Hz
                   </>
-                ) : null}
+                ) : (
+                  'quiet'
+                )}
               </span>
             </div>
             <div className="flex items-end gap-6px h-96px">
-              {(current?.harmonics ?? []).map((h, i) => (
+              {Array.from({ length: 8 }, (_, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
                   <div
                     className="w-full rounded-t-4px bg-gradient-to-t from-lilac to-pink"
-                    style={{ height: `${Math.max(4, (h / hmax) * 100)}%` }}
-                    title={`H${i + 1}: ${Math.round((i + 1) * (current?.freq ?? 0))} Hz`}
+                    style={{ height: `${harmonics.length ? Math.max(4, ((harmonics[i] ?? 0) / hmax) * 100) : 4}%` }}
+                    title={current && current.freq > 0 ? `H${i + 1}: ${Math.round((i + 1) * current.freq)} Hz` : undefined}
                   />
                 </div>
               ))}
             </div>
             <div className="flex gap-6px font-mono text-10px text-faint mt-4px">
-              {(current?.harmonics ?? []).map((_, i) => (
+              {Array.from({ length: 8 }, (_, i) => (
                 <span key={i} className="flex-1 text-center">H{i + 1}</span>
               ))}
             </div>
           </div>
         </div>
         <p className="font-mono text-10.5px text-faint mt-12px mb-0">
-          Pitch, level and partials come from an offline analysis of the track: {DATA.slices.length} slices, one every ~1.6 s.
+          Pitch, level and partials are precomputed from the MP3 itself ({DATA.slices.length} slices, one every {DATA.hop} s) by{' '}
+          <code className="text-body">scripts/analyze-track.py</code>.
         </p>
       </div>
     </div>

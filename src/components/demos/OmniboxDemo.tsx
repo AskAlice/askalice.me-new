@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { classifyQuery, parseSuggestions, searchUrl, suggestEndpoint, type QueryKind, type Suggestion } from '../../lib/omnibox'
 import { SearchIcon } from '../icons'
 
-const EXAMPLES = ['google.com mx', 'askalice.me a', '1.1.1.1', '!gh home-automation-pcbs', '12*15+40']
+const EXAMPLES = ['google.com mx', '1.1.1.1', '0.5 btc', '!gh home-automation-pcbs', '12*15+40', 'askalice.me a']
 const DEBOUNCE_MS = 250
 
 type State =

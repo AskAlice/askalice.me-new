@@ -1,12 +1,11 @@
 // Data helpers for the "I Promise" demo (/demos/music).
 //
-// Provenance: the 128 analysis slices and the spectrogram image come from the
-// AI Studio draft. Before keeping them they were checked against each other:
-// per-slice loudness (dB) correlates r≈0.90 with the spectrogram's column
-// brightness (≈0 for shuffled data), and every slice's note name matches its
-// frequency. The draft's BPM, key, "arrangement sections" and its synthetic
-// "live FFT" (sine-wave beats plus pink noise) could not be verified and were
-// dropped. The live spectrum is a real Web Audio AnalyserNode.
+// Provenance: lib/music/i-promise.json and the spectrogram image are generated
+// from the MP3 itself by scripts/analyze-track.py (method documented there).
+// They replace the AI Studio draft's data: its loudness agreed with the track
+// (r≈0.93) but its pitch values matched none of the computed ones, and its
+// "live FFT" was synthetic. BPM, year and encoder come from the MP3's own ID3
+// tags. The live spectrum is a real Web Audio AnalyserNode.
 
 export interface MusicSlice {
   /** seconds from track start */
@@ -14,8 +13,9 @@ export interface MusicSlice {
   /** loudness, dBFS */
   db: number
   rms: number
-  /** dominant pitch, Hz */
+  /** dominant pitch, Hz (0 when the slice is near-silent) */
   freq: number
+  /** nearest note for freq, or "—" when silent */
   note: string
   /** relative amplitude of partials H1–H8 */
   harmonics: number[]
@@ -25,7 +25,16 @@ export interface TrackAnalysis {
   track: string
   artist: string
   duration: number
+  /** from the ID3 TBPM tag */
+  bpm: number | null
+  /** from the ID3 encoded_by tag, e.g. "LAME in FL Studio 20" */
+  encoder: string | null
+  year: string | null
   audioUrl: string
+  /** seconds between slices */
+  hop: number
+  /** frequency range and scale of the spectrogram image's y axis */
+  spectrogram: { fMin: number; fMax: number; scale: 'log' }
   slices: MusicSlice[]
 }
 
@@ -47,6 +56,11 @@ export function sliceAt(slices: readonly MusicSlice[], t: number): MusicSlice | 
     else hi = mid - 1
   }
   return slices[lo]
+}
+
+/** Vertical position 0 (top) – 1 (bottom) of `f` on a log axis from fMax (top) to fMin (bottom). */
+export function freqToY(f: number, fMin: number, fMax: number): number {
+  return 1 - Math.log(f / fMin) / Math.log(fMax / fMin)
 }
 
 /** Fraction 0–1 of `x` across an element of width `w` (pointer → scrub position). */

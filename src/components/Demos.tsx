@@ -23,6 +23,14 @@ function WhenVisible({ children }: { children: ReactNode }) {
   return <div ref={ref} className="absolute inset-0">{on ? children : null}</div>
 }
 
+/** Warm the /demos/music chunk (player + precomputed pitch data) before the click. */
+let musicPrefetched = false
+function prefetchMusic() {
+  if (musicPrefetched) return
+  musicPrefetched = true
+  void import('./demos/MusicDemo')
+}
+
 export function Demos() {
   return (
     <section id="demos" className="max-w-1180px mx-auto px-[clamp(18px,5vw,56px)] py-[clamp(60px,9vw,120px)] scroll-mt-80px">
@@ -139,8 +147,12 @@ export function Demos() {
           </div>
         </div>
 
-        {/* I Promise — spectrogram */}
-        <div className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col">
+        {/* I Promise — spectrogram (hover/focus warms the player chunk + analysis data) */}
+        <div
+          className="border border-white/10 rounded-16px overflow-hidden bg-card flex flex-col"
+          onMouseEnter={prefetchMusic}
+          onFocus={prefetchMusic}
+        >
           <AppLink href="/demos/music" className="h-200px relative overflow-hidden bg-black block">
             <img
               src={DEMOS.music.preview}

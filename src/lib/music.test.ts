@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import data from './music/i-promise.json'
 import { TRACK } from './content'
-import { formatTime, fractionAt, logBands, sliceAt, type TrackAnalysis } from './music'
+import { formatTime, fractionAt, freqToY, logBands, sliceAt, type TrackAnalysis } from './music'
 
 const D = data as TrackAnalysis
 const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -20,8 +20,15 @@ describe('i-promise.json integrity', () => {
       if (i) expect(s.t).toBeGreaterThan(D.slices[i - 1]!.t)
     })
   })
-  it('labels every slice with the note its frequency implies', () => {
-    for (const s of D.slices) {
+  it('carries the MP3 tag metadata and a log spectrogram axis', () => {
+    expect(D.bpm).toBe(115)
+    expect(D.encoder).toMatch(/FL Studio/)
+    expect(D.spectrogram).toEqual({ fMin: 30, fMax: 16000, scale: 'log' })
+    expect(D.slices.length).toBeCloseTo(D.duration / D.hop, -1)
+  })
+  it('labels every voiced slice with the note its frequency implies, silent ones with —', () => {
+    for (const s of D.slices.filter((x) => x.freq === 0)) expect(s.note).toBe('—')
+    for (const s of D.slices.filter((x) => x.freq > 0)) {
       const m = Math.round(69 + 12 * Math.log2(s.freq / 440))
       expect(`${NAMES[m % 12]}${Math.floor(m / 12) - 1}`).toBe(s.note)
     }
@@ -53,6 +60,17 @@ describe('sliceAt', () => {
       const linear = [...D.slices].reverse().find((x) => x.t <= t) ?? D.slices[0]
       expect(sliceAt(D.slices, t)).toBe(linear)
     }
+  })
+})
+
+describe('freqToY', () => {
+  it('puts fMax at the top, fMin at the bottom, and is log-linear between', () => {
+    expect(freqToY(16000, 30, 16000)).toBeCloseTo(0)
+    expect(freqToY(30, 30, 16000)).toBeCloseTo(1)
+    const y1 = freqToY(100, 30, 16000)
+    const y2 = freqToY(1000, 30, 16000)
+    const y3 = freqToY(10000, 30, 16000)
+    expect(y1 - y2).toBeCloseTo(y2 - y3) // decades are evenly spaced
   })
 })
 
