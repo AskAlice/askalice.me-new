@@ -13,7 +13,7 @@ export function BlogPost() {
   const post = POSTS.find((p) => p.id === activePost) ?? POSTS[0]
   const Article = ARTICLES[post.id]
   return (
-    <div className="max-w-720px mx-auto px-[clamp(18px,5vw,56px)] pt-120px pb-100px min-h-100vh">
+    <div className="w-[75vw] mx-auto px-[clamp(18px,5vw,56px)] pt-120px pb-100px min-h-100vh">
       <AppLink href="/blog" className="font-mono text-13px text-muted">
         ← all writing
       </AppLink>
