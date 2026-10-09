@@ -33,13 +33,13 @@ export function Services() {
           Start a conversation
         </a>
       </div>
-      <ul className="grid grid-cols-2 max-md:grid-cols-1 gap-16px list-none p-0 m-0">
+      <ul role="list" className="grid grid-cols-2 max-md:grid-cols-1 gap-16px list-none p-0 m-0">
         {SERVICES.map((s) => (
-          <li key={s.id} className="flex flex-col border border-white/10 rounded-18px bg-gradient-to-b from-card to-carddeep p-26px">
+          <li key={s.id} id={`service-${s.id}`} className="flex flex-col border border-white/10 rounded-18px bg-gradient-to-b from-card to-carddeep p-26px">
             <span aria-hidden="true" className="w-34px h-3px rounded-full mb-20px" style={{ background: s.color }} />
             <h3 className="text-21px font-600 m-0">{s.title}</h3>
             <p className="text-muted text-15px leading-[1.6] mt-10px mb-18px">{s.blurb}</p>
-            <ul className="list-none p-0 m-0 flex flex-col gap-8px mb-22px">
+            <ul role="list" className="list-none p-0 m-0 flex flex-col gap-8px mb-22px">
               {s.deliverables.map((d) => (
                 <li key={d} className="grid grid-cols-[auto_1fr] gap-10px text-14.5px text-body leading-[1.5]">
                   <span aria-hidden="true" className="font-mono" style={{ color: s.color }}>→</span>

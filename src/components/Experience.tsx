@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ROLES, type Role } from '../lib/content'
 import { CalendarIcon, PinIcon, CpuIcon, PlayBadgeIcon, CodeIcon, PencilIcon } from './icons'
 
@@ -17,10 +17,12 @@ const BADGES: ReactNode[] = [
  * JS-free: the text is in the DOM for crawlers and works without hydration.
  */
 function RoleDetails({ role }: { role: Omit<Role, 'badge'> }) {
+  // the video only mounts (and downloads) while open — autoPlay would otherwise override preload="none"
+  const [open, setOpen] = useState(false)
   if (!role.highlights?.length && !role.media) return null
   const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
   return (
-    <details className="disclosure mt-14px max-w-640px">
+    <details className="disclosure mt-14px max-w-640px" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="inline-flex items-center gap-8px cursor-pointer font-mono text-12.5px text-pink select-none">
         <span aria-hidden="true" className="disclosure-icon inline-block transition-transform duration-150">+</span>
         {[role.highlights?.length ? `${role.highlights.length} highlights` : '', role.media ? 'screen capture' : '']
@@ -28,7 +30,7 @@ function RoleDetails({ role }: { role: Omit<Role, 'badge'> }) {
           .join(' · ')}
       </summary>
       {role.highlights && (
-        <ul className="list-none p-0 mt-14px mb-0 flex flex-col gap-9px">
+        <ul role="list" className="list-none p-0 mt-14px mb-0 flex flex-col gap-9px">
           {role.highlights.map((h) => (
             <li key={h} className="grid grid-cols-[auto_1fr] gap-11px text-body text-15px leading-[1.55]">
               <span aria-hidden="true" className="w-6px h-6px rounded-full mt-9px" style={{ background: role.companyColor }} />
@@ -37,7 +39,7 @@ function RoleDetails({ role }: { role: Omit<Role, 'badge'> }) {
           ))}
         </ul>
       )}
-      {role.media && (
+      {role.media && open && (
         <figure className="m-0 mt-18px">
           <video
             className="w-full h-auto block rounded-12px border border-white/10 bg-[#0e0c14]"

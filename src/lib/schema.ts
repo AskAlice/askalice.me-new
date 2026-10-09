@@ -22,16 +22,16 @@ export function offerCatalogLd() {
   return {
     '@type': 'OfferCatalog',
     name: 'Contract services',
-    url: `${SITE}/services`,
+    url: `${SITE}/#services`, // /services canonicalises to the home page
     itemListElement: SERVICES.map((s) => ({
       '@type': 'Offer',
       itemOffered: {
         '@type': 'Service',
-        '@id': `${SITE}/services#${s.id}`,
+        '@id': `${SITE}/#service-${s.id}`, // matches the card's DOM id
         name: s.title,
         description: s.blurb,
         provider: { '@id': PERSON_ID },
-        areaServed: ['Denver metro, Colorado', 'Remote'],
+        areaServed: { '@type': 'AdministrativeArea', name: 'Denver metropolitan area, Colorado' },
       },
     })),
   }
@@ -67,7 +67,7 @@ export function homeGraph() {
         '@id': `${SITE}/#home`,
         url: SITE,
         name: HOME_TITLE,
-        about: { '@id': PERSON_ID },
+        mainEntity: { '@id': PERSON_ID }, // Google's ProfilePage markup keys on mainEntity
         isPartOf: { '@id': `${SITE}/#site` },
       },
     ],

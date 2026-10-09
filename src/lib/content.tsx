@@ -78,10 +78,10 @@ export const ROLES: Omit<Role, 'badge'>[] = [
     description:
       'Full-stack on PlayStation web platforms. Built a front-end table that scrolls, sorts and fuzzy-searches 50,000+ rows without lag, plus a details page aggregating and visualizing the progress of many related CI/CD automations.',
     tags: ['TypeScript', 'React', 'Nest.js', 'Prisma', 'Kubernetes', 'Figma'],
+    // From the AI Studio draft (not in the résumé) — confirm before merging; may be Sony-internal detail.
     highlights: [
       'One front end for the 90+ automated and human tests that run during phased rollouts of PlayStation system software updates.',
-      'Release schedules, rollout phases and test progress in one place, instead of five separate tools.',
-      'A virtualized table that sorts, filters and fuzzy-searches 50,000+ rows without lag (React, Nest.js, Prisma).',
+      'Release schedules, rollout phases and test progress in one place, instead of spread across several tools.',
     ],
   },
   {
@@ -94,18 +94,17 @@ export const ROLES: Omit<Role, 'badge'>[] = [
     description:
       'Poached straight out of college. Built reverse-proxy modules, automated deploy pipelines and full metrics stacks; ran a PagerDuty on-call rotation as a platform reliability engineer.',
     tags: ['Prometheus', 'Grafana', 'Terraform', 'Golang', 'Kubernetes'],
+    // First bullet's wording is from the AI Studio draft (not in the résumé) — confirm before merging.
     highlights: [
       'Automated deploy pipelines that took edge provisioning from hours to minutes, and the human part of it to seconds.',
       'Built and ran full metrics stacks on Prometheus and Grafana.',
-      'Front-end work on the Section console, including the live traffic map below.',
-      'PagerDuty on-call rotation as a platform reliability engineer.',
     ],
     media: {
-      webm: 'work/section-traffic-map.webm',
-      mp4: 'work/section-traffic-map.mp4',
-      poster: 'work/section-traffic-map.jpg',
+      webm: '/media/section/traffic-map.webm',
+      mp4: '/media/section/traffic-map.mp4',
+      poster: '/media/section/traffic-map.jpg',
       alt: 'Section.io console: requests per region drawn as columns rising from a world map, with a 24-hour timeline scrubber',
-      caption: 'Section console, Dec 2020: requests per regional PoP group over a world map.',
+      caption: 'Section console, Dec 2020: requests per regional PoP group over a world map.', // confirm OK to publish
     },
   },
   {
@@ -165,7 +164,7 @@ export const SERVICES: Service[] = [
   {
     id: 'platform',
     title: 'Platform & reliability',
-    blurb: 'Deploy pipelines, metrics and on-call habits from running a global reverse-proxy platform.',
+    blurb: 'Deploy pipelines, metrics stacks and on-call habits from platform reliability work at Section.io.',
     deliverables: [
       'CI/CD and infrastructure as code (Terraform, Ansible)',
       'Kubernetes workloads and reverse-proxy configuration',
@@ -189,10 +188,10 @@ export const SERVICES: Service[] = [
   {
     id: 'hardware',
     title: 'Hardware & IoT prototyping',
-    blurb: 'Early-stage ESP32 boards in KiCad, from schematic to rendered layout, for Home Assistant setups.',
+    blurb: 'Early-stage ESP32 room nodes in KiCad, from schematic to rendered layout. Designs so far, not production runs.',
     deliverables: [
       'KiCad schematics and PCB layout for ESP32-C3/C6/S3/H2',
-      'ESPHome, Matter/Thread and Zigbee firmware bring-up',
+      'Board designs targeting ESPHome, Matter/Thread and Zigbee',
       'Sensor selection: presence, air quality, power metering',
     ],
     proof: { label: 'PCB swarm', href: '/demos/pcbs' },
