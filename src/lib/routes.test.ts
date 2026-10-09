@@ -42,3 +42,14 @@ describe('vercel.json', () => {
     expect(spa).toContain('/blog/:slug')
   })
 })
+
+describe('sitemap.xml', () => {
+  // A route missing here is still reachable, but crawlers find it later (or never).
+  const locs = [...readFileSync(new URL('../../public/sitemap.xml', import.meta.url), 'utf8').matchAll(/<loc>https:\/\/askalice\.me([^<]*)<\/loc>/g)].map((m) => m[1] || '/')
+  it.each(POSTS.map((p) => p.slug))('lists /blog/%s', (slug) => {
+    expect(locs).toContain(`/blog/${slug}`)
+  })
+  it.each(DEMO_IDS)('lists /demos/%s', (id) => {
+    expect(locs).toContain(`/demos/${id}`)
+  })
+})
