@@ -7,9 +7,9 @@ GLSL hero, interactive demos, writing, and a downloadable résumé.
 ## Stack
 
 - **React 19 + TypeScript + Vite**
-- **three.js + @react-three/fiber + @react-three/drei** — the generative
-  shaders render on a drei `<ScreenQuad>` (full-screen triangle) with a
-  `RawShaderMaterial`, so the handoff's GLSL runs verbatim
+- **Raw WebGL** — the hero shader renders on one full-screen triangle in
+  `src/components/gl/ShaderCanvas.tsx` (no three.js; the handoff's GLSL runs
+  verbatim). Dropping three/R3F/drei removed ~230 KB gzip from the site.
 - **zustand** — view state (`home / blog / post / demo`), shader editor
   state, live fragment source
 - **UnoCSS** — design tokens from the handoff (colors, Space Grotesk /
@@ -29,6 +29,7 @@ last good program rendering and surfaces the compile error.
 ```sh
 npm install
 npm run dev
+npm test        # vitest: pure helpers (routes, nav, count-up, shader errors)
 ```
 
 ## Deploy

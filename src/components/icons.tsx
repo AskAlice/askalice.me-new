@@ -71,3 +71,9 @@ export const GradCapIcon = ({ size = 15, ...p }: P) => (
 export const TrophyIcon = ({ size = 15, ...p }: P) => (
   <svg {...base(size, p)}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6m12 5h1.5a2.5 2.5 0 0 0 0-5H18M6 2h12v7a6 6 0 0 1-12 0z" /><path d="M12 15v4M8 22h8" /></svg>
 )
+export const MenuIcon = ({ size = 20, ...p }: P) => (
+  <svg {...base(size, p)}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+)
+export const CloseIcon = ({ size = 20, ...p }: P) => (
+  <svg {...base(size, p)}><path d="M18 6 6 18M6 6l12 12" /></svg>
+)

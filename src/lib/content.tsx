@@ -99,6 +99,18 @@ export const ROLES: Omit<Role, 'badge'>[] = [
   },
 ]
 
+/**
+ * Headline numbers for the stats strip (layout idea from the AI Studio draft).
+ * Every figure restates a claim already in ROLES above — no new metrics. The
+ * draft's "<20ms TTFB" was dropped: the résumé says sub-200ms.
+ */
+export const STATS: { value: number; prefix?: string; suffix: string; label: string; source: string; color: string }[] = [
+  { value: 80, suffix: 'k+', label: 'leads a year', source: 'Lead-gen for RateZip & FHA.com', color: '#ff8aa0' },
+  { value: 1, suffix: 'M+', label: 'referrals driven', source: 'Rate-comparison tools & funnels', color: '#ffd47e' },
+  { value: 35, suffix: '%', label: 'lower acquisition cost', source: 'Landing pages & API integrations', color: '#7fe0b0' },
+  { value: 50, suffix: 'k+', label: 'rows without lag', source: 'Sort + fuzzy search at PlayStation', color: '#8fc9f5' },
+]
+
 export interface Post {
   id: PostId
   slug: string

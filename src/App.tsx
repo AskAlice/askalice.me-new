@@ -5,6 +5,7 @@ import { useSite } from './store'
 import { Nav } from './components/Nav'
 import { Seo } from './components/Seo'
 import { Hero } from './components/Hero'
+import { StatsBar } from './components/StatsBar'
 import { About } from './components/About'
 import { Experience } from './components/Experience'
 import { Demos } from './components/Demos'
@@ -43,6 +44,7 @@ export default function App() {
         {view === 'home' && (
           <div>
             <Hero />
+            <StatsBar />
             <About />
             {EMU_LLC ? <Team /> : <Experience />}
             <Demos />
