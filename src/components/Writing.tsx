@@ -7,7 +7,7 @@ export function Writing() {
       <div className="flex items-end justify-between gap-20px mb-40px flex-wrap">
         <div>
           <div className="eyebrow mb-24px">
-            <span className="eyebrow-rule" />04 / writing
+            <span className="eyebrow-rule" />05 / writing
           </div>
           <h2 className="text-[clamp(28px,4vw,46px)] leading-[1.1] font-600 tracking-[-0.02em] m-0">
             Notes from the workbench.

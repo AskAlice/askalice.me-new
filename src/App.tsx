@@ -9,6 +9,7 @@ import { StatsBar } from './components/StatsBar'
 import { About } from './components/About'
 import { Experience } from './components/Experience'
 import { Demos } from './components/Demos'
+import { Services } from './components/Services'
 import { Writing } from './components/Writing'
 import { ResumeSection } from './components/ResumeSection'
 import { Footer } from './components/Footer'
@@ -48,6 +49,7 @@ export default function App() {
             <About />
             {EMU_LLC ? <Team /> : <Experience />}
             <Demos />
+            <Services />
             <Writing />
             <ResumeSection />
             <Footer />

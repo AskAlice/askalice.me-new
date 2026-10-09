@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/(work|demos|writing|resume|photography|blog)", "destination": "/index.html" },
+    { "source": "/(work|demos|services|writing|resume|photography|blog)", "destination": "/index.html" },
     { "source": "/blog/:slug", "destination": "/index.html" },
     { "source": "/demos/(search|geo|flex|midi|pcbs|pov)", "destination": "/index.html" },
     { "source": "/:path*/", "destination": "/api/proxy?p=:path*/" },

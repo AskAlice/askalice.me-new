@@ -12,6 +12,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: '/work', label: 'Work', section: 'work' },
   { href: '/demos', label: 'Demos', section: 'demos', views: ['demo'] },
+  { href: '/services', label: 'Services', section: 'services' },
   { href: '/photography', label: 'Photography', views: ['photos'] },
   { href: '/writing', label: 'Writing', section: 'writing', views: ['blog', 'post'] },
   { href: '/resume', label: 'Résumé', section: 'resume' },

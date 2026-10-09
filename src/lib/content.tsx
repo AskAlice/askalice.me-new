@@ -25,6 +25,10 @@ export interface Role {
   current?: boolean
   description: string
   tags: string[]
+  /** extra detail behind a disclosure; wording from the AI Studio draft, fact-checked against the résumé */
+  highlights?: string[]
+  /** looping screen capture shown inside the disclosure */
+  media?: { webm: string; mp4: string; poster: string; alt: string; caption: string }
 }
 
 export const ROLES: Omit<Role, 'badge'>[] = [
@@ -74,6 +78,11 @@ export const ROLES: Omit<Role, 'badge'>[] = [
     description:
       'Full-stack on PlayStation web platforms. Built a front-end table that scrolls, sorts and fuzzy-searches 50,000+ rows without lag, plus a details page aggregating and visualizing the progress of many related CI/CD automations.',
     tags: ['TypeScript', 'React', 'Nest.js', 'Prisma', 'Kubernetes', 'Figma'],
+    highlights: [
+      'One front end for the 90+ automated and human tests that run during phased rollouts of PlayStation system software updates.',
+      'Release schedules, rollout phases and test progress in one place, instead of five separate tools.',
+      'A virtualized table that sorts, filters and fuzzy-searches 50,000+ rows without lag (React, Nest.js, Prisma).',
+    ],
   },
   {
     title: 'Full-Stack Software Engineer',
@@ -85,6 +94,19 @@ export const ROLES: Omit<Role, 'badge'>[] = [
     description:
       'Poached straight out of college. Built reverse-proxy modules, automated deploy pipelines and full metrics stacks; ran a PagerDuty on-call rotation as a platform reliability engineer.',
     tags: ['Prometheus', 'Grafana', 'Terraform', 'Golang', 'Kubernetes'],
+    highlights: [
+      'Automated deploy pipelines that took edge provisioning from hours to minutes, and the human part of it to seconds.',
+      'Built and ran full metrics stacks on Prometheus and Grafana.',
+      'Front-end work on the Section console, including the live traffic map below.',
+      'PagerDuty on-call rotation as a platform reliability engineer.',
+    ],
+    media: {
+      webm: 'work/section-traffic-map.webm',
+      mp4: 'work/section-traffic-map.mp4',
+      poster: 'work/section-traffic-map.jpg',
+      alt: 'Section.io console: requests per region drawn as columns rising from a world map, with a 24-hour timeline scrubber',
+      caption: 'Section console, Dec 2020: requests per regional PoP group over a world map.',
+    },
   },
   {
     title: 'Freelance · Sysadmin · Design',
@@ -109,6 +131,73 @@ export const STATS: { value: number; prefix?: string; suffix: string; label: str
   { value: 1, suffix: 'M+', label: 'referrals driven', source: 'Rate-comparison tools & funnels', color: '#ffd47e' },
   { value: 35, suffix: '%', label: 'lower acquisition cost', source: 'Landing pages & API integrations', color: '#7fe0b0' },
   { value: 50, suffix: 'k+', label: 'rows without lag', source: 'Sort + fuzzy search at PlayStation', color: '#8fc9f5' },
+]
+
+export interface Service {
+  id: string
+  title: string
+  blurb: string
+  deliverables: string[]
+  /** where the claim is backed up on this site */
+  proof: { label: string; href: string }
+  color: string
+}
+
+/**
+ * Contract services. Structure from the AI Studio draft's "Services Offered";
+ * copy trimmed to what ROLES and the demos already show. Dropped from the
+ * draft pending Alice's confirmation: security/compliance audits,
+ * apparel/sticker/laser fabrication, ">99.99% SLA", "<20ms TTFB".
+ */
+export const SERVICES: Service[] = [
+  {
+    id: 'frontend',
+    title: 'Front-end & WebGL',
+    blurb: 'Interfaces that stay fast with a lot of data on screen, and visuals that make people stop scrolling.',
+    deliverables: [
+      'Data-dense React UIs: virtualized tables, fuzzy search, dashboards',
+      'WebGL / three.js shaders and interactive demos',
+      'Motion and layout animation that never janks',
+    ],
+    proof: { label: 'live demos', href: '/demos' },
+    color: '#ff8aa0',
+  },
+  {
+    id: 'platform',
+    title: 'Platform & reliability',
+    blurb: 'Deploy pipelines, metrics and on-call habits from running a global reverse-proxy platform.',
+    deliverables: [
+      'CI/CD and infrastructure as code (Terraform, Ansible)',
+      'Kubernetes workloads and reverse-proxy configuration',
+      'Prometheus + Grafana metrics, alerting and runbooks',
+    ],
+    proof: { label: 'Section.io work', href: '/work' },
+    color: '#b3a4f7',
+  },
+  {
+    id: 'growth',
+    title: 'Lead-gen & conversion',
+    blurb: 'Landing pages, comparison tools and API integrations measured in leads and acquisition cost.',
+    deliverables: [
+      'High-converting landing pages and funnels',
+      'Calculators and rate-comparison tools',
+      'Ad-platform and partner API integrations',
+    ],
+    proof: { label: 'Peklava work', href: '/work' },
+    color: '#ffd47e',
+  },
+  {
+    id: 'hardware',
+    title: 'Hardware & IoT prototyping',
+    blurb: 'Early-stage ESP32 boards in KiCad, from schematic to rendered layout, for Home Assistant setups.',
+    deliverables: [
+      'KiCad schematics and PCB layout for ESP32-C3/C6/S3/H2',
+      'ESPHome, Matter/Thread and Zigbee firmware bring-up',
+      'Sensor selection: presence, air quality, power metering',
+    ],
+    proof: { label: 'PCB swarm', href: '/demos/pcbs' },
+    color: '#7fe0b0',
+  },
 ]
 
 export interface Post {

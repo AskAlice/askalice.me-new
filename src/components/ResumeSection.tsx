@@ -35,7 +35,7 @@ export function ResumeSection() {
         <div className="flex items-start justify-between gap-24px flex-wrap mb-40px">
           <div>
             <div className="eyebrow mb-18px">
-              <span className="eyebrow-rule" />05 / résumé
+              <span className="eyebrow-rule" />06 / résumé
             </div>
             <h2 className="text-[clamp(28px,4vw,44px)] leading-[1.05] font-600 tracking-[-0.02em] m-0">
               The whole story,

@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import { useSite } from '../store'
-import { DEMOS, GRAVATAR, LINKS, POSTS } from '../lib/content'
+import { DEMOS, POSTS } from '../lib/content'
 import { SITE, absUrl, pathFor } from '../lib/routes'
+import { HOME_TITLE, OG_IMG, homeGraph, personRef } from '../lib/schema'
 
 const DESC =
   'Front-end-leaning full-stack engineer in Arvada, CO. Portfolio, live WebGL demos, writing, and résumé.'
-const OG_IMG = `${GRAVATAR}?s=512&d=identicon`
 
 function upsert(sel: string, tag: 'meta' | 'link', attrs: Record<string, string>) {
   let el = document.head.querySelector(sel) as HTMLElement | null
@@ -27,20 +27,6 @@ function setJsonLd(data: unknown) {
   el.textContent = JSON.stringify(data)
 }
 
-function person() {
-  return {
-    '@type': 'Person',
-    '@id': `${SITE}/#person`,
-    name: 'Alice Knag',
-    url: SITE,
-    email: LINKS.email,
-    image: OG_IMG,
-    jobTitle: 'Software Engineer',
-    address: { '@type': 'PostalAddress', addressLocality: 'Arvada', addressRegion: 'CO', addressCountry: 'US' },
-    sameAs: [LINKS.github, LINKS.linkedin],
-  }
-}
-
 export function Seo() {
   const view = useSite((s) => s.view)
   const activePost = useSite((s) => s.activePost)
@@ -54,17 +40,10 @@ export function Seo() {
     const url = absUrl(path)
     const canonical = view === 'home' ? absUrl('/') : url
 
-    let title = 'Alice Knag — pretty things with JavaScript'
+    let title = HOME_TITLE
     let description = DESC
     let type = 'website'
-    let ld: unknown = {
-      '@context': 'https://schema.org',
-      '@graph': [
-        person(),
-        { '@type': 'WebSite', '@id': `${SITE}/#site`, name: 'Alice Knag', url: SITE, publisher: { '@id': `${SITE}/#person` } },
-        { '@type': 'ProfilePage', '@id': `${SITE}/#home`, url: SITE, name: title, about: { '@id': `${SITE}/#person` }, isPartOf: { '@id': `${SITE}/#site` } },
-      ],
-    }
+    let ld: unknown = homeGraph()
 
     if (view === 'blog') {
       title = 'Writing — Alice Knag'
@@ -76,7 +55,7 @@ export function Seo() {
         description,
         url,
         isPartOf: { '@id': `${SITE}/#site` },
-        author: { '@id': `${SITE}/#person` },
+        author: personRef(),
       }
     } else if (view === 'post' && post) {
       title = `${post.title} — Alice Knag`
@@ -88,7 +67,7 @@ export function Seo() {
         headline: post.title,
         description: post.excerpt,
         datePublished: post.published,
-        author: person(),
+        author: personRef(),
         url,
         image: OG_IMG,
         mainEntityOfPage: url,
@@ -102,7 +81,7 @@ export function Seo() {
         name: title,
         description,
         url,
-        author: { '@id': `${SITE}/#person` },
+        author: personRef(),
       }
     } else if (view === 'demo' && demo && activeDemo) {
       title = `${demo.title} — Alice Knag`
@@ -114,7 +93,7 @@ export function Seo() {
         description: demo.desc,
         codeRepository: demo.repo,
         url,
-        author: { '@id': `${SITE}/#person` },
+        author: personRef(),
         programmingLanguage: demo.tech,
       }
     }

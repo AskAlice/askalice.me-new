@@ -1,13 +1,30 @@
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import UnoCSS from 'unocss/vite'
+import { homeGraph, jsonLdScript } from './src/lib/schema'
+
+/**
+ * Bake the home-page JSON-LD into index.html so crawlers that don't execute
+ * JavaScript (social card scrapers, some search bots) still get the Person /
+ * WebSite / OfferCatalog graph. <Seo> replaces the same #jsonld element per route.
+ * Fails the build if the placeholder goes missing.
+ */
+function jsonLd(): Plugin {
+  return {
+    name: 'askalice-jsonld',
+    transformIndexHtml(html) {
+      if (!html.includes('<!--jsonld-->')) throw new Error('index.html: <!--jsonld--> placeholder missing')
+      return html.replace('<!--jsonld-->', jsonLdScript(homeGraph()))
+    },
+  }
+}
 
 /** This project's folder: the only place the dev server may read files from. */
 const PROJECT_DIR = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
-  plugins: [UnoCSS(), react()],
+  plugins: [UnoCSS(), react(), jsonLd()],
   appType: 'spa',
   server: {
     // Dev servers get shared on the tailnet (see docs/ai-studio-merge.md). By

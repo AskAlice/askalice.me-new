@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ROLES } from '../lib/content'
+import { ROLES, type Role } from '../lib/content'
 import { CalendarIcon, PinIcon, CpuIcon, PlayBadgeIcon, CodeIcon, PencilIcon } from './icons'
 
 const BADGES: ReactNode[] = [
@@ -10,6 +10,57 @@ const BADGES: ReactNode[] = [
   <CodeIcon key="code" />,
   <PencilIcon key="pencil" />,
 ]
+
+/**
+ * Native <details> disclosure for a role's extra highlights (and optional
+ * screen capture). From the AI Studio draft's expandable timeline, but
+ * JS-free: the text is in the DOM for crawlers and works without hydration.
+ */
+function RoleDetails({ role }: { role: Omit<Role, 'badge'> }) {
+  if (!role.highlights?.length && !role.media) return null
+  const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+  return (
+    <details className="disclosure mt-14px max-w-640px">
+      <summary className="inline-flex items-center gap-8px cursor-pointer font-mono text-12.5px text-pink select-none">
+        <span aria-hidden="true" className="disclosure-icon inline-block transition-transform duration-150">+</span>
+        {[role.highlights?.length ? `${role.highlights.length} highlights` : '', role.media ? 'screen capture' : '']
+          .filter(Boolean)
+          .join(' · ')}
+      </summary>
+      {role.highlights && (
+        <ul className="list-none p-0 mt-14px mb-0 flex flex-col gap-9px">
+          {role.highlights.map((h) => (
+            <li key={h} className="grid grid-cols-[auto_1fr] gap-11px text-body text-15px leading-[1.55]">
+              <span aria-hidden="true" className="w-6px h-6px rounded-full mt-9px" style={{ background: role.companyColor }} />
+              {h}
+            </li>
+          ))}
+        </ul>
+      )}
+      {role.media && (
+        <figure className="m-0 mt-18px">
+          <video
+            className="w-full h-auto block rounded-12px border border-white/10 bg-[#0e0c14]"
+            poster={role.media.poster}
+            aria-label={role.media.alt}
+            width={1114}
+            height={760}
+            muted
+            loop
+            playsInline
+            preload="none"
+            autoPlay={!reduced}
+            controls={reduced}
+          >
+            <source src={role.media.webm} type="video/webm" />
+            <source src={role.media.mp4} type="video/mp4" />
+          </video>
+          <figcaption className="font-mono text-11.5px text-faint mt-9px">{role.media.caption}</figcaption>
+        </figure>
+      )}
+    </details>
+  )
+}
 
 export function Experience() {
   return (
@@ -54,6 +105,7 @@ export function Experience() {
                   ))}
                 </div>
               )}
+              <RoleDetails role={r} />
             </div>
           </div>
         ))}

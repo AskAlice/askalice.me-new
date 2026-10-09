@@ -25,6 +25,6 @@ describe('NAV_ITEMS', () => {
     }
   })
   it('exposes only the section-backed ids to the scroll-spy', () => {
-    expect(NAV_SECTION_IDS).toEqual(['work', 'demos', 'writing', 'resume'])
+    expect(NAV_SECTION_IDS).toEqual(['work', 'demos', 'services', 'writing', 'resume'])
   })
 })

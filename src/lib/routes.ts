@@ -2,7 +2,7 @@ import type { DemoId, PostId, View } from '../store'
 import { POSTS } from './content'
 
 export const SITE = 'https://askalice.me'
-export const SECTIONS = ['work', 'demos', 'writing', 'resume'] as const
+export const SECTIONS = ['work', 'demos', 'services', 'writing', 'resume'] as const
 export type Section = (typeof SECTIONS)[number]
 export const DEMO_IDS: DemoId[] = ['search', 'geo', 'flex', 'midi', 'pcbs', 'pov']
 
@@ -64,6 +64,7 @@ function assertRoutes() {
   const cases: [string, Route][] = [
     ['/', { view: 'home', demo: null, post: null, section: null }],
     ['/work', { view: 'home', demo: null, post: null, section: 'work' }],
+    ['/services', { view: 'home', demo: null, post: null, section: 'services' }],
     ['/photography', { view: 'photos', demo: null, post: null, section: null }],
     ['/blog', { view: 'blog', demo: null, post: null, section: null }],
     ['/blog/animating-flexbox-children', { view: 'post', demo: null, post: 1, section: null }],
@@ -77,4 +78,5 @@ function assertRoutes() {
   }
 }
 
-if (import.meta.env.DEV) assertRoutes()
+// optional chain: this module is also loaded by vite.config.ts (via lib/schema), where import.meta.env is undefined
+if (import.meta.env?.DEV) assertRoutes()
