@@ -10,7 +10,7 @@ None of them is merged to `main`.
 
 | Branch | Based on | What it shows |
 | --- | --- | --- |
-| `ai-studio/a-hero-nav-perf` | `origin/main` (`c5c4630`) | Raw-WebGL hero (three.js removed), mobile menu, scroll-spy, stats strip, phone fixes |
+| `ai-studio/a-hero-nav-perf` | `origin/main` (`826ee73`, includes the X26 Ultra teardown post) | Raw-WebGL hero (three.js removed), mobile menu, scroll-spy, stats strip, phone fixes |
 | `ai-studio/b-experience-services` | branch A | Expandable roles with the Section.io capture, Services section, schema.org graph built from content |
 | `ai-studio/c-demos` | branch B | Affiliation logos, the "I Promise" music player, the PCB board slideshow, a live search.emu.sh omnibox, merged repo cards, and the border fix |
 
@@ -31,6 +31,29 @@ The zip itself stays untracked. Nothing in any branch reads from it.
 
 In dev, Vite proxies `/api/suggest` to search.emu.sh, so the omnibox demo is
 live. In production, `api/suggest.ts` does the same job as a Vercel function.
+
+### All three side by side on the tailnet
+
+`claude-demos.sh` (kept outside the repo, in `~/Downloads`) checks each branch
+out into its own worktree under `~/code/askalice-demos/`, runs its dev server on
+127.0.0.1, and shares it on the tailnet with `tailscale serve` (tailnet only, never
+Funnel):
+
+| Branch | Local | Tailnet |
+| --- | --- | --- |
+| A | http://localhost:5181 | https://alice-mac.rhinoceros-dab.ts.net:8181/ |
+| B | http://localhost:5182 | https://alice-mac.rhinoceros-dab.ts.net:8182/ |
+| C | http://localhost:5183 | https://alice-mac.rhinoceros-dab.ts.net:8183/ |
+
+```sh
+bash ~/Downloads/claude-demos.sh          # (re)start; re-run to pick up new commits
+bash ~/Downloads/claude-demos.sh --stop   # stop the servers, remove the serve handlers
+```
+
+- **Tailscale lookup.** The script reads the Mac's MagicDNS name from `tailscale status --json`, so the links it prints are authoritative.
+- **Host check.** It passes that name to Vite via `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS`. Vite then accepts that one host and still rejects any other Host header with 403.
+- **Restarts.** It restarts only servers whose working directory is under `~/code/askalice-demos/`.
+- **Dependencies.** It runs `npm ci` only when a branch's lockfile changed.
 
 ## Verdict on the draft
 
@@ -159,7 +182,7 @@ live. In production, `api/suggest.ts` does the same job as a Vercel function.
 
 | Check | main | A | B | C |
 | --- | --- | --- | --- | --- |
-| `npm test` | — | 7 / 7 | 48 / 48 | 105 / 105 |
+| `npm test` | — | 7 / 7 | 60 / 60 | 118 / 118 |
 | `tsc -b` | ✓ | ✓ | ✓ | ✓ |
 | JS on first load (gzip) | 128 KB + 233 KB lazy three.js | 131 KB | 133 KB | 136 KB (+ 3–5 KB per demo page; music page 25 KB incl. pitch data) |
 | Horizontal overflow at 390 px | yes (nav) | none | none | none |
@@ -174,7 +197,9 @@ The branches were also driven in headless Chromium:
 - the Section capture plays WebM in Chromium, with MP4 as the fallback
 - C: the omnibox renders engine-shaped results, keyboard selection works, and errors show the error state
 - C: the slideshow steps by button and arrow key, flags RelayMini's mains warning, and has no GaragePilot turntable
-- C: the music player draws a real analyser spectrum when the host allows CORS, and plays with the explanation when it doesn't. Upstream services and the MP3 were stubbed in these runs, because the sandbox can't reach emu.bz or search.emu.sh
+- C: the music player preloads the self-hosted MP3, draws a real analyser spectrum, and seeks by click, drag and arrow keys. search.emu.sh was stubbed in these runs, because the sandbox can't reach it
+- After the rebase onto `826ee73`: the X26 Ultra post renders on C with `BlogPosting` JSON-LD, `/blog` shows it, and no page errors were logged
+- `claude-demos.sh` was run end to end in an isolated home directory, with a stand-in `tailscale` CLI. The run covered first start, re-run (restart without reinstall) and `--stop`. Vite answered 200 for the MagicDNS host and 403 for any other host
 
 A separate reviewer agent read both diffs and found no blockers. Its
 should-fix items were applied in follow-up commits.
@@ -223,6 +248,8 @@ should-fix items were applied in follow-up commits.
 
 ## Known gaps (in `main` too, out of scope here)
 
+- **Sitemap.** `main`'s `public/sitemap.xml` doesn't list `/blog/counterfeit-x26-ultra-teardown`. B adds the entry, plus a test that fails whenever a post or demo is missing from the sitemap.
+
 - **No per-route prerendering.** Google renders JS, but link unfurlers (Slack,
   LinkedIn, X, iMessage) see `index.html`'s home meta for every URL. The
   build-time JSON-LD plugin in B is the first step toward static per-route
@@ -242,6 +269,8 @@ should-fix items were applied in follow-up commits.
 
 All three branches are unmerged. To drop one, delete it:
 `git push origin --delete ai-studio/c-demos`.
+
+The Oct 9 rebase onto `826ee73` was force-pushed (`--force-with-lease`, `ai-studio/*` only; `main` untouched). The pre-rebase tips were A `830c13c`, B `e018fc2` and C `34307d7`. Restore one with `git push --force origin <sha>:ai-studio/<branch>` while GitHub still has the commit.
 
 If A ever lands and needs reverting, `git revert` its commits. The only
 dependency changes are removing `three`, `@react-three/fiber`,
