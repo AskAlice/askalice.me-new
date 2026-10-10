@@ -54,6 +54,8 @@ bash ~/Downloads/claude-demos.sh --stop   # stop the servers, remove the serve h
 - **Host check.** It passes that name to Vite via `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS`. Vite then accepts that one host and still rejects any other Host header with 403.
 - **Restarts.** It restarts only servers whose working directory is under `~/code/askalice-demos/`.
 - **Dependencies.** It runs `npm ci` only when a branch's lockfile changed.
+- **Serve config.** `tailscale serve --bg` stays configured across reboots until `--stop`. Anything that later listens on 5181–5183 is reachable from the tailnet on 8181–8183.
+- **Tailnet exposure.** Anyone your tailnet ACLs let reach this Mac can read the branch's source and `node_modules`, and can spend the API keys through the dev proxy.
 
 ## Verdict on the draft
 
@@ -169,9 +171,10 @@ bash ~/Downloads/claude-demos.sh --stop   # stop the servers, remove the serve h
 - **Omnibox, `/demos/search`** (`OmniboxDemo.tsx`, `lib/omnibox.ts`, `api/suggest.ts`):
   - Typing queries the real search.emu.sh `/suggest?type=json` through a same-origin proxy. search.emu.sh sends no CORS headers, so the browser can't call it directly.
   - The proxy always sends `useApiKeys=true` (your call), so crypto prices and LLM routing work.
-  - Only `q` is taken from the caller. It's capped at 200 characters, and anything else the caller sends is ignored.
-  - Per-IP rate limit: 5/s and 100/min.
-  - 60 s edge cache, 6 s timeout, JSON-only relay.
+  - Only `q` is accepted, capped at 200 characters (counted in code points, so an emoji is never cut in half). Any other parameter gets a 400, so variants can't split the edge cache.
+  - Per-IP rate limit: 5/s and 100/min, with IPv6 counted per /64. When the table fills, it drops expired clients first instead of resetting everyone. The limit is per function instance, so a Vercel Firewall rule is the global backstop (see Still open).
+  - 60 s edge cache, 6 s timeout, redirects refused, JSON-only relay.
+  - The dev proxy builds the same upstream URL (`upstreamUrl` from `api/suggest.ts`) and forwards only `host` and `accept`. Cookies and the `Tailscale-User-*` headers that `tailscale serve` adds never reach search.emu.sh.
   - Enter opens the real `/search`.
   - The label under the input uses the engine's own dig, IP and bang patterns.
   - The draft's canned answers and its `Function()` math evaluator are gone.
@@ -182,7 +185,7 @@ bash ~/Downloads/claude-demos.sh --stop   # stop the servers, remove the serve h
 
 | Check | main | A | B | C |
 | --- | --- | --- | --- | --- |
-| `npm test` | — | 7 / 7 | 60 / 60 | 118 / 118 |
+| `npm test` | — | 7 / 7 | 60 / 60 | 132 / 132 |
 | `tsc -b` | ✓ | ✓ | ✓ | ✓ |
 | JS on first load (gzip) | 128 KB + 233 KB lazy three.js | 131 KB | 133 KB | 136 KB (+ 3–5 KB per demo page; music page 25 KB incl. pitch data) |
 | Horizontal overflow at 390 px | yes (nav) | none | none | none |
@@ -204,6 +207,17 @@ The branches were also driven in headless Chromium:
 A separate reviewer agent read both diffs and found no blockers. Its
 should-fix items were applied in follow-up commits.
 
+A second security review (Oct 9) covered the search proxy and the demo script. Its fixes have been applied:
+- **Vite file serving.** `server.fs.allow` now pins Vite's file serving to the project, on all three branches. Before this, a parent folder that looks like a workspace exposed its files over `/@fs/` to the tailnet. This was checked: such a file returned 200 before the change and 403 after.
+- **Search proxy:**
+  - only `q` is accepted
+  - limits count code points
+  - IPv6 is counted per /64
+  - the table is pruned instead of cleared
+  - upstream redirects are refused
+- **Dev proxy.** It now strips caller headers and clamps emoji safely. A run against a local echo upstream confirmed it sends only `host` and `accept`, with a 200-code-point `q`.
+- **Demo script.** Its restart and worktree steps no longer abort the run partway.
+
 ## Decided (Oct 9)
 
 - **Approved:**
@@ -216,6 +230,11 @@ should-fix items were applied in follow-up commits.
 - **The MP3** is copied into the site.
 
 ## Still open
+
+- **search.emu.sh honours `useApiKeys=true` from anyone** (`src/routes/suggest.ts:117`, `search.ts:18`), and its own OpenSearch descriptor advertises the flag. So the limits in this proxy don't protect the paid keys: anyone can call search.emu.sh directly. Fix that in search.emu.sh, for example by using the keys only when a secret header is present (the proxy would send it from a Vercel env var), plus a daily cap.
+- **search.emu.sh logs `CRYPTOCOMPARE_KEY` in plain text** on every suggest request (`src/routes/suggest.ts:153`). That's a separate repo, so nothing was changed there. Remove the log line and consider rotating the key.
+- **Vercel Firewall rule** on `/api/suggest` as the global rate limit. The in-function limit is per instance. This is a dashboard setting.
+- Vercel's own request log, and any log drain, records `/api/suggest?q=…`. When the OTel fetch instrumentation lands, drop `q` from the recorded URL.
 
 - Your part in the Section traffic map. The caption stays neutral ("Section console, Dec 2020") until you say what you built.
 - The two Sony and Section bullets that came from the draft (below).

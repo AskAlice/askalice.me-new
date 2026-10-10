@@ -7,6 +7,16 @@
 export const ENGINE = 'https://search.emu.sh'
 export const MAX_QUERY = 200
 
+/**
+ * Trim and cap a query at MAX_QUERY code points (not UTF-16 units), so an
+ * emoji is never cut in half; lone surrogates become U+FFFD. The result is
+ * always safe to pass to encodeURIComponent, which throws on half a pair.
+ */
+export function clampQuery(s: string): string {
+  const wellFormed = s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD')
+  return Array.from(wellFormed.trim()).slice(0, MAX_QUERY).join('')
+}
+
 export type QueryKind =
   | { kind: 'dig'; domain: string; record: string }
   | { kind: 'ip'; ip: string }
@@ -105,10 +115,10 @@ export function parseSuggestions(json: unknown, limit = 8): Suggestion[] {
 
 /** Where Enter goes: the real engine's /search, which applies bangs and engine routing. */
 export function searchUrl(q: string): string {
-  return `${ENGINE}/search?q=${encodeURIComponent(q.trim())}`
+  return `${ENGINE}/search?q=${encodeURIComponent(clampQuery(q))}`
 }
 
-/** Same-origin endpoint the demo calls (api/suggest.ts in prod, a Vite proxy in dev). */
+/** Same-origin endpoint the demo calls (api/suggest.ts in prod, a Vite proxy in dev). Sends only q. */
 export function suggestEndpoint(q: string): string {
-  return `/api/suggest?type=json&q=${encodeURIComponent(q.trim().slice(0, MAX_QUERY))}`
+  return `/api/suggest?q=${encodeURIComponent(clampQuery(q))}`
 }

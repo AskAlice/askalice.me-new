@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_QUERY, classifyQuery, parseSuggestions, searchUrl, suggestEndpoint } from './omnibox'
+import { MAX_QUERY, clampQuery, classifyQuery, parseSuggestions, searchUrl, suggestEndpoint } from './omnibox'
 
 describe('classifyQuery (mirrors search.emu.sh routing)', () => {
   it.each([
@@ -53,10 +53,21 @@ describe('parseSuggestions', () => {
 describe('urls', () => {
   it('encodes the query for the engine and the proxy', () => {
     expect(searchUrl(' !gh a&b ')).toBe('https://search.emu.sh/search?q=!gh%20a%26b')
-    expect(suggestEndpoint('a b')).toBe('/api/suggest?type=json&q=a%20b')
+    expect(suggestEndpoint('a b')).toBe('/api/suggest?q=a%20b') // only q: other params would split the edge cache
   })
   it('truncates over-long queries before sending', () => {
     const q = decodeURIComponent(suggestEndpoint('x'.repeat(500)).split('q=')[1]!)
     expect(q).toHaveLength(MAX_QUERY)
+  })
+  it('never cuts an emoji in half at the limit (encodeURIComponent would throw)', () => {
+    const s = 'x'.repeat(MAX_QUERY - 1) + '🦤🦤'
+    expect(Array.from(clampQuery(s))).toHaveLength(MAX_QUERY)
+    expect(clampQuery(s).endsWith('🦤')).toBe(true)
+    expect(() => suggestEndpoint(s)).not.toThrow()
+    expect(() => searchUrl(s)).not.toThrow()
+  })
+  it('replaces lone surrogates instead of throwing', () => {
+    expect(clampQuery('a\uD83Eb')).toBe('a\uFFFDb')
+    expect(() => suggestEndpoint('\uDD24')).not.toThrow()
   })
 })

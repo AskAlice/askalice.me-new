@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { classifyQuery, parseSuggestions, searchUrl, suggestEndpoint, type QueryKind, type Suggestion } from '../../lib/omnibox'
+import { MAX_QUERY, classifyQuery, parseSuggestions, searchUrl, suggestEndpoint, type QueryKind, type Suggestion } from '../../lib/omnibox'
 import { SearchIcon } from '../icons'
 
 const EXAMPLES = ['google.com mx', '1.1.1.1', '0.5 btc', '!gh home-automation-pcbs', '12*15+40', 'askalice.me a']
@@ -118,7 +118,7 @@ export function OmniboxDemo() {
           <input
             ref={inputRef}
             value={q}
-            onChange={(e) => setQ(e.target.value.slice(0, 200))}
+            onChange={(e) => setQ(Array.from(e.target.value).slice(0, MAX_QUERY).join(''))}
             onKeyDown={onKey}
             role="combobox"
             aria-expanded={rows.length > 0}
